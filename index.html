@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proyecmec - Gestión de Taller</title>
+<style>
+  :root{
+    --azul:#1e3a5f;
+    --azul-osc:#132a45;
+    --naranja:#e8622c;
+    --gris-fondo:#eef1f4;
+    --gris-borde:#d7dce2;
+    --verde:#2e8b57;
+    --amarillo:#d4a017;
+    --rojo:#c0392b;
+    --blanco:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--gris-fondo);color:#222;}
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--azul-osc),var(--azul));
+  }
+  .loginBox{
+    background:var(--blanco);padding:36px 32px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);
+    width:100%;max-width:360px;text-align:center;
+  }
+  .loginBox h1{margin:0 0 4px;color:var(--azul);font-size:24px;}
+  .loginBox p{margin:0 0 24px;color:#666;font-size:13px;}
+  .loginBox input{
+    width:100%;padding:12px;margin-bottom:12px;border:1px solid var(--gris-borde);border-radius:6px;font-size:14px;
+  }
+  .loginBox button{
+    width:100%;padding:12px;background:var(--naranja);color:#fff;border:none;border-radius:6px;
+    font-size:15px;font-weight:600;cursor:pointer;
+  }
+  .loginBox button:hover{background:#cc4f1e;}
+  #loginError{color:var(--rojo);font-size:13px;margin-top:10px;min-height:16px;}
+
+  /* ---------- APP ---------- */
+  #appScreen{display:none;}
+  header{
+    background:var(--azul);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:10px;
+  }
+  header h1{margin:0;font-size:19px;}
+  header .userInfo{font-size:13px;opacity:.9;}
+  header .btns button{
+    margin-left:8px;background:var(--naranja);color:#fff;border:none;padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;
+  }
+  header .btns button.secondary{background:rgba(255,255,255,.15);}
+  header .btns button:hover{opacity:.9;}
+
+  #board{
+    display:flex;gap:12px;padding:16px;overflow-x:auto;align-items:flex-start;
+  }
+  .col{
+    background:#fff;border-radius:8px;min-width:260px;max-width:260px;flex:0 0 auto;
+    box-shadow:0 1px 3px rgba(0,0,0,.1);display:flex;flex-direction:column;max-height:calc(100vh - 110px);
+  }
+  .col h2{
+    font-size:13px;margin:0;padding:12px;color:#fff;border-radius:8px 8px 0 0;text-align:center;
+  }
+  .col .count{opacity:.85;font-weight:400;}
+  .col-body{padding:8px;overflow-y:auto;flex:1;min-height:60px;}
+  .card{
+    background:#fafbfc;border:1px solid var(--gris-borde);border-radius:6px;padding:10px;margin-bottom:8px;
+    cursor:pointer;font-size:13px;
+  }
+  .card:hover{border-color:var(--naranja);}
+  .card .tId{font-weight:700;color:var(--azul);}
+  .card .tCliente{color:#555;}
+  .card .tGarantia{margin-top:6px;font-size:11px;padding:2px 6px;border-radius:10px;display:inline-block;}
+  .g-ok{background:#e3f5e9;color:var(--verde);}
+  .g-porvencer{background:#fdf3d9;color:var(--amarillo);}
+  .g-vencida{background:#fbe4e1;color:var(--rojo);}
+  .card.urgente{border-left:4px solid var(--rojo);}
+  .badgeUrgente{background:var(--rojo);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:4px;}
+  .emptyCol{font-size:12px;color:#999;text-align:center;padding:14px 6px;}
+
+  .col1 h2{background:#546e7a;}
+  .col2 h2{background:#8d6e63;}
+  .col3 h2{background:var(--naranja);}
+  .col4 h2{background:#7e57c2;}
+  .col5 h2{background:#0288d1;}
+  .col6 h2{background:var(--verde);}
+  .colc1 h2{background:#8d6e63;}
+  .colc2 h2{background:var(--amarillo);}
+  .colc3 h2{background:var(--verde);}
+  .colc4 h2{background:var(--rojo);}
+
+  #fabAdd{
+    position:fixed;bottom:22px;right:22px;background:var(--naranja);color:#fff;border:none;
+    width:56px;height:56px;border-radius:50%;font-size:28px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);
+  }
+
+  /* ---------- MODALES ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;align-items:flex-start;justify-content:center;
+    overflow-y:auto;padding:30px 12px;
+  }
+  .modal{
+    background:#fff;border-radius:8px;max-width:560px;width:100%;padding:22px;margin-top:10px;
+  }
+  .modal h2{margin-top:0;color:var(--azul);font-size:18px;}
+  .modal label{display:block;font-size:12px;color:#555;margin:10px 0 4px;font-weight:600;}
+  .modal input, .modal select, .modal textarea{
+    width:100%;padding:9px;border:1px solid var(--gris-borde);border-radius:5px;font-size:13px;font-family:inherit;
+  }
+  .modal textarea{min-height:70px;resize:vertical;}
+  .modalActions{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .modalActions button{
+    padding:9px 16px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;
+  }
+  .btnPrimary{background:var(--naranja);color:#fff;}
+  .btnSecondary{background:#eee;color:#333;}
+  .btnDanger{background:var(--rojo);color:#fff;}
+  .btnClose{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;}
+  .modal{position:relative;}
+
+  .imgGrid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .imgGrid .imgItem{position:relative;width:80px;}
+  .imgGrid .imgItem img{width:80px;height:80px;display:block;}
+  .imgGrid img{width:100%;height:100%;object-fit:cover;border-radius:5px;border:1px solid var(--gris-borde);}
+  .imgGrid .imgDel{
+    position:absolute;top:-6px;right:-6px;background:var(--rojo);color:#fff;border:none;border-radius:50%;
+    width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;
+  }
+  .stageRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .stageBtn{
+    padding:6px 10px;border:1px solid var(--gris-borde);border-radius:5px;background:#f5f5f5;cursor:pointer;font-size:12px;
+  }
+  .stageBtn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
+  .historyList{margin-top:6px;font-size:11px;color:#666;max-height:110px;overflow-y:auto;}
+  .exportRow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .exportRow button{flex:1;min-width:120px;}
+  #uploadStatus{font-size:12px;color:var(--azul);margin-top:6px;}
+
+  /* Usuarios */
+  .userRow{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--gris-borde);padding:8px 0;font-size:13px;}
+  .userRow .rol{font-size:11px;padding:2px 8px;border-radius:10px;background:#eee;}
+  .rol-admin{background:#e3f0fb;color:var(--azul);}
+  .rol-proyecmec{background:#f1eef7;color:#7e57c2;}
+  .rol-polyagro{background:#fdf3d9;color:#8d6e63;}
+  .rol-director{background:#e3f5e9;color:var(--verde);}
+  .rol-compras{background:#e0f2f1;color:#00796b;}
+  .readonlyNote{background:#fdf3d9;color:#8d6e63;padding:8px 10px;border-radius:5px;font-size:12px;margin-top:10px;}
+  .cotizacionBox{border:1px solid var(--gris-borde);border-radius:6px;padding:12px;margin-top:8px;background:#fafbfc;}
+  .estadoCot{font-size:11px;padding:3px 9px;border-radius:10px;font-weight:600;display:inline-block;}
+  .estCot-pendiente{background:#fdf3d9;color:var(--amarillo);}
+  .estCot-aprobada{background:#e3f5e9;color:var(--verde);}
+  .estCot-ninguna{background:#eee;color:#888;}
+  #firmaPad{border:1px dashed var(--gris-borde);border-radius:6px;touch-action:none;width:100%;max-width:400px;height:140px;background:#fff;}
+  .firmaBtns{margin-top:6px;display:flex;gap:8px;}
+  .userRow button{border:none;background:none;color:var(--rojo);cursor:pointer;font-size:12px;}
+
+  @media(max-width:600px){
+    .col{min-width:220px;max-width:220px;}
+    header{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen">
+  <div class="loginBox">
+    <h1>Proyecmec</h1>
+    <p>Gestión de tickets de taller · Polyagro</p>
+    <input type="email" id="loginEmail" placeholder="Correo electrónico" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <button onclick="hacerLogin()">Entrar</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="appScreen">
+  <header>
+    <h1>Proyecmec · Taller</h1>
+    <div class="userInfo" id="userInfo"></div>
+    <div class="btns">
+      <button class="secondary" id="btnCotizaciones" onclick="abrirCotizaciones()" style="display:none;">Cotizaciones</button>
+      <button class="secondary" id="btnUsuarios" onclick="abrirUsuarios()" style="display:none;">Usuarios</button>
+      <button class="secondary" id="btnMantenimiento" onclick="abrirMantenimiento()" style="display:none;">Mantenimiento</button>
+      <button class="secondary" id="btnGarantias" onclick="abrirHistorialGarantia()" style="display:none;">Garantías vencidas</button>
+      <button class="secondary" id="btnReporte" onclick="abrirReporteProyecmec()" style="display:none;">Reporte Proyecmec</button>
+      <button class="secondary" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </header>
+
+  <div id="avisoPendientes" style="display:none;background:#fdf3d9;color:#8d6e63;padding:10px 20px;font-size:13px;cursor:pointer;"></div>
+  <div id="board"></div>
+  <button id="fabAdd" onclick="abrirNuevoTicket()" title="Nuevo ticket">+</button>
+</div>
+
+<!-- ===================== MODAL TICKET ===================== -->
+<div class="overlay" id="ticketOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('ticketOverlay')">×</button>
+    <h2 id="ticketModalTitle">Nuevo ticket</h2>
+    <input type="hidden" id="ticketId">
+
+    <label>Cliente / Empresa</label>
+    <input type="text" id="ticketCliente" placeholder="Ej: Polyagro">
+
+    <label>Equipo / Máquina</label>
+    <input type="text" id="ticketEquipo" placeholder="Ej: Motor trilladora">
+
+    <label>Prioridad</label>
+    <select id="ticketPrioridad">
+      <option value="normal">Normal</option>
+      <option value="urgente">🔴 Urgente</option>
+    </select>
+
+    <label>Descripción del problema</label>
+    <textarea id="ticketDescripcion" placeholder="Detalle del daño o servicio solicitado"></textarea>
+
+    <label>Técnico asignado</label>
+    <input type="text" id="ticketTecnico" placeholder="Nombre del técnico">
+
+    <label>Tiempo estimado de reparación (días)</label>
+    <input type="number" id="ticketTiempoEstimado" min="1" step="1" placeholder="Ej: 3">
+    <div id="tiempoEstimadoNota" style="display:none;font-size:11px;color:var(--rojo);margin-top:2px;">🔒 Ya quedó fijado, no se puede cambiar (solo el Admin puede corregirlo).</div>
+
+    <label>Días de garantía</label>
+    <input type="number" id="ticketGarantia" value="30" min="0">
+
+    <label>Etapa actual</label>
+    <div class="stageRow" id="stageRow"></div>
+    <input type="hidden" id="etapaSeleccionadaInput" value="recibido">
+
+    <label>Fotos</label>
+    <input type="file" id="ticketFotos" accept="image/*" capture="environment" multiple>
+    <div id="fotosBloqueadasNota" style="display:none;font-size:11px;color:var(--rojo);margin-top:2px;">🔒 Ya adjuntaste tu evidencia fotográfica, no se pueden agregar ni borrar más fotos.</div>
+    <div id="uploadStatus"></div>
+    <div class="imgGrid" id="imgGrid"></div>
+
+    <div id="origenCotBox" style="display:none;" class="readonlyNote"></div>
+
+    <div id="calificacionSection" style="display:none;">
+      <label>Calificación del servicio (Polyagro → Proyecmec)</label>
+      <div class="cotizacionBox">
+        <label style="margin-top:0;">Solicitud de cotización y ejecución (0-100)</label>
+        <input type="number" id="calCotizacion" min="0" max="100" placeholder="Ej: 90">
+
+        <label>Personal calificado y calidad del arreglo (0-100)</label>
+        <input type="number" id="calPersonal" min="0" max="100" placeholder="Ej: 90">
+
+        <div id="referenciaPlazosBox" style="font-size:12px;background:#eef1f4;padding:8px;border-radius:5px;margin-top:8px;"></div>
+        <label>Cumplimiento de plazos de entrega (0-100)</label>
+        <input type="number" id="calPlazos" min="0" max="100" placeholder="Ej: 90">
+
+        <label>Soporte técnico para nuestra operación (0-100)</label>
+        <input type="number" id="calSoporte" min="0" max="100" placeholder="Ej: 90">
+
+        <label>Comentarios</label>
+        <textarea id="calComentario" placeholder="Observaciones sobre el servicio prestado"></textarea>
+
+        <div class="firmaBtns" style="justify-content:flex-start;padding-top:10px;">
+          <button class="btnPrimary" id="btnGuardarCalificacion" onclick="guardarCalificacion()">Guardar calificación</button>
+        </div>
+
+        <div id="calPromedioBox" style="display:none;margin-top:10px;font-size:13px;"></div>
+
+        <div id="fallaGarantiaBox" style="margin-top:14px;border-top:1px solid var(--gris-borde);padding-top:10px;">
+          <div id="fallaGarantiaEstado" style="font-size:12px;color:#666;"></div>
+          <button class="btnDanger" id="btnReportarFalla" style="margin-top:8px;" onclick="reportarFallaGarantia()">⚠️ Reportar falla dentro de garantía</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="historialBox" style="display:none;">
+      <label>Historial</label>
+      <div class="historyList" id="historyList"></div>
+    </div>
+
+    <div class="exportRow" id="exportRow" style="display:none;">
+      <button class="btnSecondary" onclick="exportarExcel()">📊 Exportar Excel</button>
+      <button class="btnSecondary" onclick="exportarWord()">📄 Exportar Word</button>
+      <button class="btnDanger" id="btnBorrarImagenesTicket" onclick="borrarImagenesTicket()">🗑️ Borrar imágenes</button>
+    </div>
+
+    <div class="modalActions">
+      <button class="btnDanger" id="btnEliminarTicket" style="display:none;" onclick="eliminarTicket()">Eliminar ticket</button>
+      <button class="btnSecondary" onclick="cerrarModal('ticketOverlay')">Cancelar</button>
+      <button class="btnPrimary" id="btnGuardarTicket" onclick="guardarTicket()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL USUARIOS ===================== -->
+<div class="overlay" id="userOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('userOverlay')">×</button>
+    <h2>Usuarios (<span id="userCount">0</span>/10)</h2>
+
+    <div id="userList"></div>
+
+    <label>Nombre</label>
+    <input type="text" id="nuevoUserNombre" placeholder="Nombre completo">
+    <label>Correo</label>
+    <input type="email" id="nuevoUserCorreo" placeholder="correo@proyecmec.com">
+    <label>Contraseña temporal</label>
+    <input type="text" id="nuevoUserPass" placeholder="Mínimo 6 caracteres">
+    <label>Rol</label>
+    <select id="nuevoUserRol">
+      <option value="proyecmec">Proyecmec (técnico)</option>
+      <option value="polyagro">Polyagro (cliente)</option>
+      <option value="director">Director General</option>
+      <option value="compras">Compras</option>
+      <option value="admin">Admin</option>
+    </select>
+
+    <div class="modalActions">
+      <button class="btnPrimary" onclick="crearUsuario()">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TABLERO DE COTIZACIONES ===================== -->
+<div class="overlay" id="cotOverlay">
+  <div class="modal" style="max-width:920px;">
+    <button class="btnClose" onclick="cerrarModal('cotOverlay')">×</button>
+    <h2>Cotizaciones</h2>
+    <p style="font-size:12px;color:#666;">Trabajos que requieren autorización previa del Director General antes de pasar a mantenimiento de taller.</p>
+    <div id="cotBoard" style="display:flex;gap:10px;overflow-x:auto;padding:6px 0;"></div>
+    <div class="modalActions" id="cotFabRow" style="justify-content:flex-start;">
+      <button class="btnPrimary" onclick="abrirNuevaCotizacion()">+ Nueva cotización</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL DETALLE DE COTIZACIÓN ===================== -->
+<div class="overlay" id="cotDetalleOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('cotDetalleOverlay')">×</button>
+    <h2 id="cotDetalleTitle">Nueva cotización</h2>
+    <input type="hidden" id="cotId">
+
+    <label>Cliente / Empresa</label>
+    <input type="text" id="cotCliente" placeholder="Ej: Polyagro">
+    <label>Equipo / Máquina</label>
+    <input type="text" id="cotEquipo" placeholder="Ej: Motor trilladora">
+    <label>Descripción del trabajo a cotizar</label>
+    <textarea id="cotDescripcion" placeholder="Detalle de lo que se va a cotizar"></textarea>
+
+    <div id="cotArchivoBox" style="display:none;">
+      <label>Archivo de cotización</label>
+      <div class="cotizacionBox">
+        <div id="cotArchivoEstado">Sin archivo adjunto.</div>
+        <div id="cotArchivoSubirBox" style="margin-top:8px;">
+          <input type="file" id="cotArchivoInput" accept="application/pdf,image/*" onchange="subirArchivoCotizacion()">
+          <div id="cotArchivoSubiendoMsg" style="font-size:12px;color:var(--azul);margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="cotFirmaBox" style="display:none;margin-top:12px;">
+      <label>Firma del Director General</label>
+      <canvas id="firmaPad"></canvas>
+      <div class="firmaBtns">
+        <button class="btnSecondary" onclick="limpiarFirma()">Borrar firma</button>
+        <button class="btnDanger" onclick="rechazarCotizacion()">Rechazar</button>
+        <button class="btnPrimary" onclick="aprobarCotizacionYConvertir()">Aprobar y crear ticket de taller</button>
+      </div>
+    </div>
+
+    <div id="cotResultadoBox" style="display:none;margin-top:12px;" class="readonlyNote"></div>
+
+    <div id="cotComprasBox" style="display:none;margin-top:12px;border-top:1px solid var(--gris-borde);padding-top:10px;">
+      <div id="cotComprasEstado" style="font-size:12px;color:#666;"></div>
+      <button class="btnPrimary" id="btnVistoBuenoCompras" style="margin-top:8px;" onclick="darVistoBuenoCompras()">✔️ Marcar como revisado e impreso</button>
+    </div>
+
+    <div class="modalActions">
+      <button class="btnDanger" id="btnEliminarCot" style="display:none;" onclick="eliminarCotizacion()">Eliminar cotización</button>
+      <button class="btnSecondary" onclick="cerrarModal('cotDetalleOverlay')">Cerrar</button>
+      <button class="btnPrimary" id="btnGuardarCot" onclick="guardarCotizacionNueva()">Crear cotización</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== REPORTE MENSUAL PARA PROYECMEC ===================== -->
+<div class="overlay" id="reporteOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('reporteOverlay')">×</button>
+    <h2>Reporte mensual — Proyecmec</h2>
+    <p style="font-size:12px;color:#666;">El sistema calcula esto automáticamente con las calificaciones que Polyagro ya guardó. Cambia el mes si quieres ver otro periodo, y descarga cuando quieras.</p>
+
+    <label>Mes a evaluar</label>
+    <input type="month" id="reporteMes" onchange="generarReporteProyecmec()">
+
+    <div id="reporteResumen" style="margin-top:14px;font-size:13px;"></div>
+
+    <div class="exportRow" id="reporteExportRow" style="display:none;">
+      <button class="btnSecondary" onclick="exportarExcelReporte()">📊 Exportar Excel</button>
+      <button class="btnSecondary" onclick="exportarWordReporte()">📄 Exportar Word</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== HISTORIAL DE GARANTÍAS VENCIDAS ===================== -->
+<div class="overlay" id="garantiaOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('garantiaOverlay')">×</button>
+    <h2>Historial de garantías vencidas</h2>
+    <p style="font-size:12px;color:#666;">Tickets que salieron del tablero automáticamente porque su garantía ya venció. Los datos quedan guardados aquí; puedes exportarlos cuando quieras.</p>
+
+    <div id="garantiaResumen" style="margin:10px 0;font-size:13px;"></div>
+
+    <div class="exportRow">
+      <button class="btnSecondary" onclick="exportarExcelGarantia()">📊 Exportar Excel (todos)</button>
+      <button class="btnSecondary" onclick="exportarWordGarantia()">📄 Exportar Word (todos)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL MANTENIMIENTO (borrado masivo de imágenes) ===================== -->
+<div class="overlay" id="maintOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('maintOverlay')">×</button>
+    <h2>Mantenimiento de imágenes</h2>
+    <p style="font-size:12px;color:#666;">Busca todos los tickets de un mes, exporta el respaldo completo (Excel + Word con fotos), y luego borra las imágenes de Storage para liberar espacio. Los datos de los tickets NO se eliminan, solo las fotos.</p>
+
+    <label>Mes a revisar</label>
+    <input type="month" id="maintMes">
+    <div class="modalActions" style="justify-content:flex-start;">
+      <button class="btnSecondary" onclick="buscarTicketsMes()">Buscar tickets del mes</button>
+    </div>
+
+    <div id="maintResumen" style="margin-top:14px;font-size:13px;"></div>
+
+    <div class="exportRow" id="maintExportRow" style="display:none;">
+      <button class="btnSecondary" onclick="exportarExcelMes()">📊 Exportar Excel (todos)</button>
+      <button class="btnSecondary" onclick="exportarWordMes()">📄 Exportar Word (todos)</button>
+    </div>
+
+    <div class="modalActions" id="maintBorrarRow" style="display:none;">
+      <button class="btnDanger" onclick="borrarImagenesMes()">🗑️ Borrar imágenes de estos tickets</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== FIREBASE SDK (compat) ===================== -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN FIREBASE
+   ============================================================ */
+var firebaseConfig = {
+  apiKey: "AIzaSyA-gR1PIjHOut-gyCz8vdR66Bz0sg7WfFM",
+  authDomain: "proyecmec-tallerpolyagro.firebaseapp.com",
+  projectId: "proyecmec-tallerpolyagro",
+  storageBucket: "proyecmec-tallerpolyagro.firebasestorage.app",
+  messagingSenderId: "719761865722",
+  appId: "1:719761865722:web:b6c64825dd6376b66a8243"
+};
+
+var app = firebase.initializeApp(firebaseConfig);
+// App secundaria: sirve para que el admin cree usuarios nuevos SIN cerrar su propia sesión
+var secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+
+var auth = firebase.auth();
+var secondaryAuth = secondaryApp.auth();
+var db = firebase.firestore();
+var storage = firebase.storage();
+
+var ETAPAS = [
+  {id:"recibido", nombre:"Recibido / Diagnóstico", col:"col1"},
+  {id:"espera_repuestos", nombre:"Espera de repuestos", col:"col2"},
+  {id:"reparacion", nombre:"En reparación", col:"col3"},
+  {id:"calidad", nombre:"Control de calidad", col:"col4"},
+  {id:"listo_entrega", nombre:"Listo para entrega", col:"col5"},
+  {id:"entregado", nombre:"Entregado (garantía)", col:"col6"}
+];
+
+var ETAPAS_COT = [
+  {id:"creada", nombre:"Por cotizar", col:"colc1"},
+  {id:"pendiente", nombre:"Pendiente autorización", col:"colc2"},
+  {id:"aprobada", nombre:"Aprobada → Taller", col:"colc3"},
+  {id:"rechazada", nombre:"Rechazada", col:"colc4"}
+];
+
+var currentUser = null; // {correo, nombre, rol}
+var ticketsCache = {};
+var cotizacionesCache = {};
+var cotizacionesUnsub = null;
+var ticketsUnsub = null;
+var imagenesTemp = []; // imágenes pendientes de subir al guardar
+
+/* ============================================================
+   LOGIN / SESIÓN
+   ============================================================ */
+function hacerLogin(){
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  document.getElementById('loginError').textContent = "";
+  if(!email || !pass){
+    document.getElementById('loginError').textContent = "Ingresa correo y contraseña.";
+    return;
+  }
+  auth.signInWithEmailAndPassword(email, pass).catch(function(err){
+    document.getElementById('loginError').textContent = "Correo o contraseña incorrectos.";
+  });
+}
+
+function cerrarSesion(){
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(function(user){
+  if(user){
+    db.collection('usuarios').doc(user.uid).get().then(function(doc){
+      if(!doc.exists || doc.data().activo === false){
+        document.getElementById('loginError').textContent = "Tu usuario no está activo. Contacta al admin.";
+        auth.signOut();
+        return;
+      }
+      currentUser = doc.data();
+      currentUser.uid = user.uid;
+      mostrarApp();
+    }).catch(function(){
+      auth.signOut();
+    });
+  } else {
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appScreen').style.display = 'none';
+    if(ticketsUnsub){ ticketsUnsub(); ticketsUnsub = null; }
+    if(cotizacionesUnsub){ cotizacionesUnsub(); cotizacionesUnsub = null; }
+  }
+});
+
+function mostrarApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  var etiquetasRol = {admin:'Admin', proyecmec:'Proyecmec', polyagro:'Polyagro', director:'Director General', compras:'Compras'};
+  document.getElementById('userInfo').textContent = currentUser.nombre + " · " + (etiquetasRol[currentUser.rol] || currentUser.rol);
+  document.getElementById('btnUsuarios').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnCotizaciones').style.display = ['proyecmec','director','compras','admin'].indexOf(currentUser.rol) !== -1 ? 'inline-block' : 'none';
+  document.getElementById('btnMantenimiento').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnGarantias').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnReporte').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('fabAdd').style.display = (currentUser.rol === 'polyagro' || currentUser.rol === 'admin') ? 'block' : 'none';
+  renderBoard();
+  escucharTickets();
+  escucharCotizaciones();
+
+  if(currentUser.rol === 'compras'){
+    document.getElementById('board').style.display = 'none';
+    document.getElementById('avisoPendientes').style.display = 'block';
+    document.getElementById('avisoPendientes').style.cssText = 'display:block;background:#e0f2f1;color:#00796b;padding:10px 20px;font-size:13px;';
+    document.getElementById('avisoPendientes').textContent = 'Tu perfil solo tiene acceso a Cotizaciones. Da clic en "Cotizaciones" arriba para ver las aprobadas y darles el visto bueno.';
+    document.getElementById('avisoPendientes').onclick = null;
+  } else {
+    document.getElementById('board').style.display = 'flex';
+  }
+}
+
+/* ============================================================
+   KANBAN - RENDER
+   ============================================================ */
+function renderBoard(){
+  var board = document.getElementById('board');
+  board.innerHTML = '';
+  ETAPAS.forEach(function(etapa){
+    var col = document.createElement('div');
+    col.className = 'col ' + etapa.col;
+    col.innerHTML = '<h2>' + etapa.nombre + ' <span class="count" id="count_' + etapa.id + '">(0)</span></h2>' +
+                     '<div class="col-body" id="colbody_' + etapa.id + '"></div>';
+    board.appendChild(col);
+  });
+}
+
+function escucharTickets(){
+  ticketsUnsub = db.collection('tickets').orderBy('fechaCreacion','desc').onSnapshot(function(snap){
+    ticketsCache = {};
+    snap.forEach(function(doc){
+      ticketsCache[doc.id] = doc.data();
+      ticketsCache[doc.id].id = doc.id;
+    });
+    pintarTickets();
+  }, function(err){
+    console.error(err);
+  });
+}
+
+function pintarTickets(){
+  ETAPAS.forEach(function(etapa){
+    document.getElementById('colbody_' + etapa.id).innerHTML = '';
+  });
+  var conteos = {};
+  ETAPAS.forEach(function(e){ conteos[e.id] = 0; });
+
+  var ids = Object.keys(ticketsCache);
+  ids.forEach(function(id){
+    var t = ticketsCache[id];
+    var etapaId = t.etapa || 'recibido';
+    conteos[etapaId] = (conteos[etapaId] || 0) + 1;
+    var body = document.getElementById('colbody_' + etapaId);
+    if(!body) return;
+
+    var card = document.createElement('div');
+    card.className = 'card' + (t.prioridad === 'urgente' ? ' urgente' : '');
+    card.onclick = function(){ abrirTicket(id); };
+
+    var garantiaHtml = '';
+    if(etapaId === 'entregado' && t.fechaEntrega){
+      var venceMs = t.fechaEntrega.toMillis ? t.fechaEntrega.toMillis() : new Date(t.fechaEntrega).getTime();
+      venceMs += (t.garantiaDias || 0) * 86400000;
+      var diasRestantes = Math.ceil((venceMs - Date.now()) / 86400000);
+
+      if(diasRestantes < 0){
+        // Garantía vencida: se archiva y se saca del tablero (no se muestra esta tarjeta)
+        archivarTicketPorGarantiaVencida(t);
+        conteos[etapaId]--;
+        return;
+      }
+
+      var claseG = 'g-ok', textoG = 'Garantía: ' + diasRestantes + ' días';
+      if(diasRestantes <= 5){ claseG = 'g-porvencer'; textoG = 'Vence en ' + diasRestantes + ' días'; }
+      garantiaHtml = '<div class="tGarantia ' + claseG + '">' + textoG + '</div>';
+    }
+
+    card.innerHTML =
+      (t.prioridad === 'urgente' ? '<div class="badgeUrgente">🔴 URGENTE</div>' : '') +
+      '<div class="tId">' + id + '</div>' +
+      '<div class="tCliente">' + escapeHtml(t.cliente || '') + ' · ' + escapeHtml(t.equipo || '') + '</div>' +
+      '<div style="color:#777;margin-top:4px;">' + escapeHtml(t.tecnico || 'Sin asignar') + '</div>' +
+      (t.tiempoEstimado ? '<div style="color:#0288d1;font-size:11px;margin-top:2px;">⏱ ' + t.tiempoEstimado + ' día(s)</div>' : '') +
+      garantiaHtml;
+    body.appendChild(card);
+  });
+
+  ETAPAS.forEach(function(etapa){
+    document.getElementById('count_' + etapa.id).textContent = '(' + conteos[etapa.id] + ')';
+    if(conteos[etapa.id] === 0){
+      document.getElementById('colbody_' + etapa.id).innerHTML = '<div class="emptyCol">Sin tickets</div>';
+    }
+  });
+
+  actualizarAvisoPendientes();
+}
+
+function actualizarAvisoPendientes(){
+  var aviso = document.getElementById('avisoPendientes');
+  if(currentUser.rol === 'compras') return; // ese rol usa este mismo cartel con otro mensaje fijo
+  if(currentUser.rol !== 'polyagro'){
+    aviso.style.display = 'none';
+    return;
+  }
+  var pendientes = ticketsPendientesPorCalificar();
+  if(pendientes.length === 0){
+    aviso.style.display = 'none';
+    return;
+  }
+  aviso.style.display = 'block';
+  aviso.innerHTML = '⚠️ Tienes <b>' + pendientes.length + '</b> ticket(s) entregado(s) sin calificar (' + pendientes.join(', ') + '). No podrás crear un ticket nuevo hasta calificarlos. Clic aquí para calificar.';
+  aviso.onclick = function(){ abrirTicket(pendientes[0]); };
+}
+
+/* ============================================================
+   ARCHIVADO AUTOMÁTICO POR GARANTÍA VENCIDA
+   ============================================================ */
+var ticketsEnProcesoDeArchivo = {}; // evita procesar el mismo ticket dos veces en la misma sesión
+
+function archivarTicketPorGarantiaVencida(t){
+  if(ticketsEnProcesoDeArchivo[t.id]) return;
+  ticketsEnProcesoDeArchivo[t.id] = true;
+
+  var datosArchivo = Object.assign({}, t);
+  delete datosArchivo.id;
+  datosArchivo.archivadoEn = firebase.firestore.FieldValue.serverTimestamp();
+  datosArchivo.motivoArchivo = 'garantia_vencida';
+
+  db.collection('historialGarantia').doc(t.id).set(datosArchivo).then(function(){
+    return db.collection('tickets').doc(t.id).delete();
+  }).catch(function(err){
+    console.error('Error archivando ticket ' + t.id + ': ', err);
+    delete ticketsEnProcesoDeArchivo[t.id];
+  });
+}
+
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* ============================================================
+   MODAL TICKET - ABRIR / CERRAR
+   ============================================================ */
+function cerrarModal(id){
+  document.getElementById(id).style.display = 'none';
+}
+
+// Polyagro solo crea el ticket (cliente/equipo/descripción). Proyecmec y Admin manejan el resto.
+function esSoloPolyagro(){
+  return currentUser.rol === 'polyagro';
+}
+
+/* ---------- Firma digital (canvas), reutilizada en el módulo de Cotizaciones ---------- */
+var firmaCtx = null, firmaDibujando = false;
+
+function inicializarFirmaPad(){
+  var canvas = document.getElementById('firmaPad');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = 140;
+  firmaCtx = canvas.getContext('2d');
+  firmaCtx.clearRect(0,0,canvas.width,canvas.height);
+  firmaCtx.lineWidth = 2;
+  firmaCtx.lineCap = 'round';
+  firmaCtx.strokeStyle = '#1e3a5f';
+
+  canvas.onmousedown = iniciarTrazo;
+  canvas.onmousemove = trazar;
+  canvas.onmouseup = function(){ firmaDibujando = false; };
+  canvas.onmouseleave = function(){ firmaDibujando = false; };
+  canvas.ontouchstart = function(e){ e.preventDefault(); iniciarTrazo(tocarComoMouse(e, canvas)); };
+  canvas.ontouchmove = function(e){ e.preventDefault(); trazar(tocarComoMouse(e, canvas)); };
+  canvas.ontouchend = function(e){ firmaDibujando = false; };
+}
+
+function tocarComoMouse(e, canvas){
+  var rect = canvas.getBoundingClientRect();
+  var t = e.touches[0];
+  return {offsetX: t.clientX - rect.left, offsetY: t.clientY - rect.top};
+}
+
+function iniciarTrazo(e){
+  firmaDibujando = true;
+  firmaCtx.beginPath();
+  firmaCtx.moveTo(e.offsetX, e.offsetY);
+}
+
+function trazar(e){
+  if(!firmaDibujando) return;
+  firmaCtx.lineTo(e.offsetX, e.offsetY);
+  firmaCtx.stroke();
+}
+
+function limpiarFirma(){
+  var canvas = document.getElementById('firmaPad');
+  firmaCtx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function esCanvasFirmaVacio(){
+  var canvas = document.getElementById('firmaPad');
+  var blank = document.createElement('canvas');
+  blank.width = canvas.width; blank.height = canvas.height;
+  return canvas.toDataURL() === blank.toDataURL();
+}
+function ajustarPermisosTicket(esNuevo){
+  var soloPolyagro = esSoloPolyagro();
+  var esDirector = currentUser.rol === 'director';
+  var soloLectura = (soloPolyagro && !esNuevo) || esDirector;
+
+  // Campos que solo Proyecmec/Admin pueden tocar
+  var camposRestringidos = ['ticketTecnico','ticketGarantia','ticketTiempoEstimado'];
+  camposRestringidos.forEach(function(idCampo){
+    document.getElementById(idCampo).disabled = soloPolyagro || esDirector;
+  });
+
+  // Fotos: Polyagro SÍ puede tomar/subir fotos de la pieza dañada, pero solo al crear el ticket.
+  // Ya creado el ticket, solo Proyecmec/Admin agregan más fotos (avance de la reparación).
+  document.getElementById('ticketFotos').disabled = (soloPolyagro && !esNuevo) || esDirector;
+
+  // Cliente/equipo/descripción: Polyagro los edita solo al CREAR; Director nunca los edita
+  var camposBasicos = ['ticketCliente','ticketEquipo','ticketDescripcion'];
+  camposBasicos.forEach(function(idCampo){
+    document.getElementById(idCampo).disabled = soloLectura;
+  });
+
+  // Etapas: Polyagro y Director no eligen etapa
+  document.getElementById('stageRow').style.display = (soloPolyagro || esDirector) ? 'none' : 'flex';
+
+  // Exportar / borrar imágenes / eliminar ticket: solo Proyecmec/Admin
+  if(soloPolyagro || esDirector){
+    document.getElementById('exportRow').style.display = 'none';
+    document.getElementById('btnEliminarTicket').style.display = 'none';
+  }
+
+  // Botón guardar: solo visible cuando la persona puede realmente guardar cambios
+  document.getElementById('btnGuardarTicket').style.display = (soloLectura) ? 'none' : 'inline-block';
+
+  // Nota informativa para quien solo puede ver
+  var notaExistente = document.getElementById('notaSoloLectura');
+  if(notaExistente) notaExistente.remove();
+  if(soloLectura){
+    var nota = document.createElement('div');
+    nota.id = 'notaSoloLectura';
+    nota.className = 'readonlyNote';
+    nota.textContent = esDirector ? 'Como Director General, aquí puedes revisar el ticket y autorizar la cotización. Los demás campos los maneja Proyecmec.' : 'Proyecmec está gestionando este ticket. Aquí puedes ver el avance, pero no editarlo.';
+    document.querySelector('#ticketOverlay .modal').insertBefore(nota, document.querySelector('#ticketOverlay .modalActions'));
+  }
+}
+
+function pintarStageRow(etapaActual, esNuevo, esAdmin){
+  var row = document.getElementById('stageRow');
+  row.innerHTML = '';
+
+  if(esNuevo){
+    document.getElementById('etapaSeleccionadaInput').value = 'recibido';
+    row.innerHTML = '<div style="font-size:12px;color:#666;">Etapa inicial: <b>Recibido / Diagnóstico</b></div>';
+    return;
+  }
+
+  if(esAdmin){
+    // El admin sí puede saltar libremente a cualquier etapa (para corregir errores)
+    document.getElementById('etapaSeleccionadaInput').value = etapaActual;
+    ETAPAS.forEach(function(e){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'stageBtn' + (e.id === etapaActual ? ' active' : '');
+      b.textContent = e.nombre;
+      b.onclick = function(){
+        document.querySelectorAll('#stageRow .stageBtn').forEach(function(x){ x.classList.remove('active'); });
+        b.classList.add('active');
+        document.getElementById('etapaSeleccionadaInput').value = e.id;
+      };
+      row.appendChild(b);
+    });
+    return;
+  }
+
+  // Todos los demás roles: solo pueden avanzar UNA etapa a la vez, en orden, sin poder retroceder ni saltar
+  document.getElementById('etapaSeleccionadaInput').value = etapaActual;
+  var idx = ETAPAS.findIndex(function(e){ return e.id === etapaActual; });
+  var actual = ETAPAS[idx] || ETAPAS[0];
+  var infoActual = document.createElement('div');
+  infoActual.style.cssText = 'font-size:12px;margin-bottom:6px;';
+  infoActual.innerHTML = 'Etapa actual: <b>' + actual.nombre + '</b>';
+  row.appendChild(infoActual);
+
+  if(idx < ETAPAS.length - 1){
+    var siguiente = ETAPAS[idx + 1];
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'stageBtn active';
+    btn.textContent = 'Avanzar a: ' + siguiente.nombre;
+    btn.onclick = function(){
+      document.getElementById('etapaSeleccionadaInput').value = siguiente.id;
+      btn.textContent = '✓ Se guardará como: ' + siguiente.nombre;
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+    };
+    row.appendChild(btn);
+  } else {
+    var fin = document.createElement('div');
+    fin.style.cssText = 'font-size:12px;color:var(--verde);margin-top:4px;';
+    fin.textContent = '✓ Esta es la última etapa (en garantía).';
+    row.appendChild(fin);
+  }
+}
+
+function getStageSeleccionada(){
+  return document.getElementById('etapaSeleccionadaInput').value || 'recibido';
+}
+
+function ticketsPendientesPorCalificar(){
+  return Object.keys(ticketsCache).filter(function(id){
+    var t = ticketsCache[id];
+    return t.etapa === 'entregado' && (!t.calificacion || t.calificacion.promedio === undefined);
+  });
+}
+
+function abrirNuevoTicket(){
+  if(currentUser.rol === 'polyagro'){
+    var pendientes = ticketsPendientesPorCalificar();
+    if(pendientes.length > 0){
+      alert('Tienes ' + pendientes.length + ' ticket(s) entregado(s) sin calificar: ' + pendientes.join(', ') + '.\n\nDebes calificarlos antes de crear un ticket nuevo.');
+      abrirTicket(pendientes[0]);
+      return;
+    }
+  }
+  document.getElementById('ticketModalTitle').textContent = 'Nuevo ticket';
+  document.getElementById('ticketId').value = '';
+  document.getElementById('ticketCliente').value = 'Polyagro';
+  document.getElementById('ticketPrioridad').value = 'normal';
+  document.getElementById('ticketPrioridad').disabled = false;
+  document.getElementById('ticketEquipo').value = '';
+  document.getElementById('ticketDescripcion').value = '';
+  document.getElementById('ticketTecnico').value = '';
+  document.getElementById('ticketTiempoEstimado').value = '';
+  document.getElementById('tiempoEstimadoNota').style.display = 'none';
+  document.getElementById('fotosBloqueadasNota').style.display = 'none';
+  document.getElementById('ticketGarantia').value = 30;
+  document.getElementById('imgGrid').innerHTML = '';
+  document.getElementById('uploadStatus').textContent = '';
+  document.getElementById('historialBox').style.display = 'none';
+  document.getElementById('exportRow').style.display = 'none';
+  document.getElementById('btnEliminarTicket').style.display = 'none';
+  imagenesTemp = [];
+  pintarStageRow('recibido', true, currentUser.rol === 'admin');
+  ajustarPermisosTicket(true);
+  document.getElementById('origenCotBox').style.display = 'none';
+  document.getElementById('calificacionSection').style.display = 'none';
+  document.getElementById('ticketOverlay').style.display = 'flex';
+}
+
+function abrirTicket(id){
+  var t = ticketsCache[id];
+  if(!t) return;
+  document.getElementById('ticketModalTitle').textContent = 'Ticket ' + id;
+  document.getElementById('ticketId').value = id;
+  document.getElementById('ticketCliente').value = t.cliente || '';
+  document.getElementById('ticketPrioridad').value = t.prioridad || 'normal';
+  document.getElementById('ticketPrioridad').disabled = currentUser.rol !== 'admin';
+  document.getElementById('ticketEquipo').value = t.equipo || '';
+  document.getElementById('ticketDescripcion').value = t.descripcion || '';
+  document.getElementById('ticketTecnico').value = t.tecnico || '';
+  document.getElementById('ticketTiempoEstimado').value = t.tiempoEstimado || '';
+  document.getElementById('ticketGarantia').value = t.garantiaDias || 30;
+  pintarStageRow(t.etapa || 'recibido', false, currentUser.rol === 'admin');
+
+  var grid = document.getElementById('imgGrid');
+  grid.innerHTML = '';
+  var etiquetasFoto = {polyagro: '📷 Antes (Polyagro)', proyecmec: '🔧 Después (Proyecmec)', admin: '👤 Admin', director: 'Director'};
+  (t.imagenes || []).forEach(function(img){
+    var div = document.createElement('div');
+    div.className = 'imgItem';
+    div.style.width = '90px';
+    var etiqueta = etiquetasFoto[img.subidaPorRol] || '';
+    var btnBorrar = currentUser.rol === 'admin' ? '<button class="imgDel" onclick="borrarImagen(\'' + id + '\',\'' + img.path.replace(/'/g,"\\'") + '\')">×</button>' : '';
+    div.innerHTML = '<img src="' + img.url + '">' + btnBorrar +
+      (etiqueta ? '<div style="font-size:9px;color:#666;text-align:center;margin-top:2px;">' + etiqueta + '</div>' : '');
+    grid.appendChild(div);
+  });
+  document.getElementById('uploadStatus').textContent = '';
+  imagenesTemp = [];
+
+  var histBox = document.getElementById('historialBox');
+  var histList = document.getElementById('historyList');
+  if(t.historial && t.historial.length){
+    histBox.style.display = 'block';
+    histList.innerHTML = t.historial.map(function(h){
+      var fecha = h.fecha && h.fecha.toDate ? h.fecha.toDate().toLocaleString('es-CO') : '';
+      return '<div>' + fecha + ' — ' + escapeHtml(h.etapa) + ' (' + escapeHtml(h.usuario || '') + ')</div>';
+    }).join('');
+  } else {
+    histBox.style.display = 'none';
+  }
+
+  document.getElementById('exportRow').style.display = 'flex';
+  document.getElementById('btnBorrarImagenesTicket').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnEliminarTicket').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  ajustarPermisosTicket(false);
+  var notaTiempo = document.getElementById('tiempoEstimadoNota');
+  if(t.tiempoEstimado && currentUser.rol !== 'admin'){
+    document.getElementById('ticketTiempoEstimado').disabled = true;
+    notaTiempo.style.display = 'block';
+  } else {
+    notaTiempo.style.display = 'none';
+  }
+
+  // Fotos: una vez el rol actual ya subió alguna, se bloquea el campo (evidencia fija, no se agregan más)
+  var yaSubioFotoEsteRol = (t.imagenes || []).some(function(img){ return img.subidaPorRol === currentUser.rol; });
+  var notaFotos = document.getElementById('fotosBloqueadasNota');
+  if(yaSubioFotoEsteRol && currentUser.rol !== 'admin'){
+    document.getElementById('ticketFotos').disabled = true;
+    notaFotos.style.display = 'block';
+  } else {
+    notaFotos.style.display = 'none';
+  }
+
+  var origenBox = document.getElementById('origenCotBox');
+  if(t.origenCotizacionId){
+    origenBox.style.display = 'block';
+    origenBox.textContent = 'Este ticket nació de la cotización ' + t.origenCotizacionId + ', autorizada por el Director General.';
+  } else {
+    origenBox.style.display = 'none';
+  }
+  actualizarCalificacionUI(t);
+  document.getElementById('ticketOverlay').style.display = 'flex';
+}
+
+/* ============================================================
+   CALIFICACIÓN DE SERVICIO (Polyagro → Proyecmec)
+   ============================================================ */
+function actualizarCalificacionUI(t){
+  var seccion = document.getElementById('calificacionSection');
+  var puedeCalificar = (currentUser.rol === 'polyagro' || currentUser.rol === 'admin');
+  var esEntregado = t.etapa === 'entregado';
+
+  if(!esEntregado || !puedeCalificar){
+    seccion.style.display = 'none';
+    return;
+  }
+  seccion.style.display = 'block';
+
+  var cal = t.calificacion || {};
+  document.getElementById('calCotizacion').value = (cal.cotizacion !== undefined) ? cal.cotizacion : '';
+  document.getElementById('calPersonal').value = (cal.personal !== undefined) ? cal.personal : '';
+  document.getElementById('calPlazos').value = (cal.plazos !== undefined) ? cal.plazos : '';
+  document.getElementById('calSoporte').value = (cal.soporte !== undefined) ? cal.soporte : '';
+  document.getElementById('calComentario').value = cal.comentario || '';
+
+  var refBox = document.getElementById('referenciaPlazosBox');
+  var partesRef = [];
+  partesRef.push('Tiempo prometido por Proyecmec: <b>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : 'no especificado') + '</b>');
+  var diasReales = null;
+  if(t.fechaCreacion && t.fechaCreacion.toDate && t.fechaEntrega && t.fechaEntrega.toDate){
+    diasReales = Math.round((t.fechaEntrega.toDate() - t.fechaCreacion.toDate()) / 86400000);
+    partesRef.push('Tiempo real desde que se recibió hasta la entrega: <b>' + diasReales + ' día(s)</b>');
+  }
+  var sePasoDelTiempo = (t.tiempoEstimado && diasReales !== null && diasReales > t.tiempoEstimado);
+  if(sePasoDelTiempo){
+    partesRef.push('<span style="color:var(--rojo);">⚠️ Se pasó ' + (diasReales - t.tiempoEstimado) + ' día(s) del tiempo prometido. El puntaje de "Plazos" se registra automáticamente en 0.</span>');
+  }
+  refBox.innerHTML = partesRef.join('<br>');
+
+  var promedioBox = document.getElementById('calPromedioBox');
+  var yaCalificado = cal.promedio !== undefined;
+  var puedeEditarCalificacion = !yaCalificado || currentUser.rol === 'admin';
+
+  ['calCotizacion','calPersonal','calPlazos','calSoporte','calComentario'].forEach(function(idCampo){
+    document.getElementById(idCampo).disabled = !puedeEditarCalificacion;
+  });
+
+  // El puntaje de plazos queda forzado en 0 y bloqueado si se pasó del tiempo prometido (salvo Admin)
+  if(sePasoDelTiempo && !yaCalificado){
+    document.getElementById('calPlazos').value = 0;
+    if(currentUser.rol !== 'admin'){
+      document.getElementById('calPlazos').disabled = true;
+    }
+  }
+
+  document.getElementById('btnGuardarCalificacion').style.display = puedeEditarCalificacion ? 'inline-block' : 'none';
+
+  if(yaCalificado){
+    promedioBox.style.display = 'block';
+    promedioBox.innerHTML = '🔒 Calificación registrada. Promedio: <b>' + cal.promedio.toFixed(1) + ' / 100</b> — calificado por ' + escapeHtml(cal.calificadoPor || '') +
+      (cal.fechaCalificacion && cal.fechaCalificacion.toDate ? ' el ' + cal.fechaCalificacion.toDate().toLocaleString('es-CO') : '') +
+      (currentUser.rol !== 'admin' ? '<br><span style="color:var(--rojo);">Ya no se puede modificar (solo el Admin puede corregirla).</span>' : '<br><span style="color:var(--rojo);">Editando como Admin: al guardar se sobrescribe la calificación anterior.</span>');
+  } else {
+    promedioBox.style.display = 'none';
+  }
+
+  var fallaBox = document.getElementById('fallaGarantiaEstado');
+  var btnFalla = document.getElementById('btnReportarFalla');
+  if(cal.fallaEnGarantia){
+    fallaBox.innerHTML = '⚠️ Se reportó una falla en garantía. Ticket de reparación generado: <b>' + (cal.ticketGarantiaId || '') + '</b>';
+    btnFalla.style.display = 'none';
+  } else {
+    fallaBox.textContent = 'Si el repuesto/arreglo falla dentro del periodo de garantía, repórtalo aquí.';
+    btnFalla.style.display = (currentUser.rol === 'polyagro' || currentUser.rol === 'admin') ? 'inline-block' : 'none';
+  }
+}
+
+function guardarCalificacion(){
+  var id = document.getElementById('ticketId').value;
+  if(!id) return;
+  var t = ticketsCache[id];
+
+  if(t && t.calificacion && t.calificacion.promedio !== undefined && currentUser.rol !== 'admin'){
+    alert('Esta calificación ya quedó registrada y no se puede modificar. Solo el Admin puede corregirla.');
+    return;
+  }
+
+  function num(idCampo){
+    var v = parseFloat(document.getElementById(idCampo).value);
+    return isNaN(v) ? null : Math.max(0, Math.min(100, v));
+  }
+  var cotizacion = num('calCotizacion');
+  var personal = num('calPersonal');
+  var plazos = num('calPlazos');
+  var soporte = num('calSoporte');
+
+  if(t && t.tiempoEstimado && t.fechaCreacion && t.fechaCreacion.toDate && t.fechaEntrega && t.fechaEntrega.toDate){
+    var diasRealesCheck = Math.round((t.fechaEntrega.toDate() - t.fechaCreacion.toDate()) / 86400000);
+    if(diasRealesCheck > t.tiempoEstimado && currentUser.rol !== 'admin'){
+      plazos = 0; // se pasó del tiempo prometido: forzado a 0, no negociable
+    }
+  }
+
+  if(cotizacion === null || personal === null || plazos === null || soporte === null){
+    alert('Completa las 4 categorías con un puntaje de 0 a 100.');
+    return;
+  }
+
+  var promedio = (cotizacion + personal + plazos + soporte) / 4;
+
+  db.collection('tickets').doc(id).update({
+    'calificacion.cotizacion': cotizacion,
+    'calificacion.personal': personal,
+    'calificacion.plazos': plazos,
+    'calificacion.soporte': soporte,
+    'calificacion.promedio': promedio,
+    'calificacion.comentario': document.getElementById('calComentario').value.trim(),
+    'calificacion.calificadoPor': currentUser.correo,
+    'calificacion.fechaCalificacion': firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    alert('Calificación guardada. Promedio: ' + promedio.toFixed(1) + ' / 100');
+    abrirTicket(id);
+  }).catch(function(err){
+    alert('Error guardando la calificación: ' + err.message);
+  });
+}
+
+function reportarFallaGarantia(){
+  var id = document.getElementById('ticketId').value;
+  var t = ticketsCache[id];
+  if(!id || !t) return;
+
+  var descripcionFalla = prompt('Describe el problema presentado con la pieza/arreglo dentro del periodo de garantía:');
+  if(!descripcionFalla) return;
+  if(!confirm('¿Confirmas reportar esta falla en garantía? Esto creará un nuevo ticket de reparación vinculado a ' + id + '.')) return;
+
+  generarNuevoTicketId().then(function(nuevoTicketId){
+    return db.collection('tickets').doc(nuevoTicketId).set({
+      cliente: t.cliente, equipo: t.equipo,
+      descripcion: 'FALLA EN GARANTÍA (ref. ' + id + '): ' + descripcionFalla,
+      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: t.garantiaDias || 30,
+      fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+      fechaEntrega: null, creadoPor: currentUser.correo, imagenes: [],
+      origenGarantiaId: id,
+      historial: [{etapa: 'recibido', fecha: new Date(), usuario: currentUser.correo + ' (falla en garantía)'}]
+    }).then(function(){
+      return db.collection('tickets').doc(id).update({
+        'calificacion.fallaEnGarantia': true,
+        'calificacion.ticketGarantiaId': nuevoTicketId,
+        'calificacion.descripcionFalla': descripcionFalla
+      });
+    }).then(function(){ return nuevoTicketId; });
+  }).then(function(nuevoTicketId){
+    alert('Falla registrada. Se creó el ticket de reparación ' + nuevoTicketId + '.');
+    abrirTicket(id);
+  }).catch(function(err){
+    alert('Error reportando la falla: ' + err.message);
+  });
+}
+
+/* ============================================================
+   GENERADOR DE ID CONSECUTIVO (TK-0001, TK-0002...)
+   ============================================================ */
+function generarNuevoTicketId(){
+  var contadorRef = db.collection('contadores').doc('tickets');
+  return db.runTransaction(function(transaction){
+    return transaction.get(contadorRef).then(function(doc){
+      var siguiente = doc.exists ? (doc.data().siguiente || 1) : 1;
+      transaction.set(contadorRef, {siguiente: siguiente + 1}, {merge: true});
+      return siguiente;
+    });
+  }).then(function(numero){
+    return 'TK-' + String(numero).padStart(4, '0');
+  });
+}
+
+/* ============================================================
+   GUARDAR / SUBIR IMÁGENES / ELIMINAR
+   ============================================================ */
+function guardarTicket(){
+  var id = document.getElementById('ticketId').value;
+  var esNuevo = !id;
+
+  if(esSoloPolyagro() && !esNuevo){
+    alert('Solo Proyecmec puede editar un ticket ya creado.');
+    return;
+  }
+
+  if(esNuevo && currentUser.rol !== 'polyagro' && currentUser.rol !== 'admin'){
+    alert('Solo Polyagro (o el Admin) puede crear un ticket nuevo. Proyecmec gestiona los tickets ya creados: cotización, ejecución y entrega.');
+    return;
+  }
+
+  if(esNuevo && currentUser.rol === 'polyagro' && ticketsPendientesPorCalificar().length > 0){
+    alert('Tienes tickets entregados sin calificar. Debes calificarlos antes de crear uno nuevo.');
+    return;
+  }
+
+  if(esNuevo && currentUser.rol === 'polyagro' && imagenesTemp.length === 0){
+    alert('Debes adjuntar al menos una foto de la pieza/equipo dañado antes de crear el ticket. Esto sirve como evidencia del estado en que se entregó.');
+    return;
+  }
+
+  var etapaSeleccionada = esSoloPolyagro() ? 'recibido' : getStageSeleccionada();
+
+  if(!esNuevo && etapaSeleccionada === 'entregado' && currentUser.rol !== 'admin' && imagenesTemp.length === 0){
+    alert('Antes de marcar el ticket como "Entregado" debes adjuntar al menos una foto del arreglo terminado. Esto sirve como evidencia de que el trabajo se completó.');
+    return;
+  }
+
+  if(!esNuevo && etapaSeleccionada !== 'recibido' && !document.getElementById('ticketTiempoEstimado').value.trim()){
+    alert('Antes de avanzar el ticket debes indicar el tiempo estimado de entrega. Ese dato es lo que Polyagro usará para calificar el cumplimiento de plazos.');
+    return;
+  }
+
+  var datos = {
+    cliente: document.getElementById('ticketCliente').value.trim(),
+    prioridad: document.getElementById('ticketPrioridad').value,
+    equipo: document.getElementById('ticketEquipo').value.trim(),
+    descripcion: document.getElementById('ticketDescripcion').value.trim(),
+    tecnico: document.getElementById('ticketTecnico').value.trim(),
+    tiempoEstimado: parseInt(document.getElementById('ticketTiempoEstimado').value) || null,
+    garantiaDias: parseInt(document.getElementById('ticketGarantia').value) || 0,
+    etapa: etapaSeleccionada
+  };
+
+  if(!datos.cliente || !datos.equipo){
+    alert('Completa al menos Cliente y Equipo.');
+    return;
+  }
+
+  if(esNuevo){
+    datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+    datos.fechaEntrega = etapaSeleccionada === 'entregado' ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    datos.creadoPor = currentUser.correo;
+    datos.imagenes = [];
+    datos.historial = [{etapa: etapaSeleccionada, fecha: new Date(), usuario: currentUser.correo}];
+
+    generarNuevoTicketId().then(function(nuevoId){
+      return db.collection('tickets').doc(nuevoId).set(datos).then(function(){
+        return subirImagenesPendientes(nuevoId);
+      });
+    }).then(function(){
+      cerrarModal('ticketOverlay');
+    });
+  } else {
+    var t = ticketsCache[id];
+    var etapaCambio = t.etapa !== etapaSeleccionada;
+    var update = {
+      cliente: datos.cliente, equipo: datos.equipo, descripcion: datos.descripcion, prioridad: datos.prioridad,
+      tecnico: datos.tecnico, tiempoEstimado: datos.tiempoEstimado, garantiaDias: datos.garantiaDias, etapa: etapaSeleccionada
+    };
+    if(etapaCambio){
+      update.historial = firebase.firestore.FieldValue.arrayUnion({etapa: etapaSeleccionada, fecha: new Date(), usuario: currentUser.correo});
+      if(etapaSeleccionada === 'entregado'){
+        update.fechaEntrega = firebase.firestore.FieldValue.serverTimestamp();
+      }
+    }
+    db.collection('tickets').doc(id).update(update).then(function(){
+      subirImagenesPendientes(id).then(function(){
+        cerrarModal('ticketOverlay');
+      });
+    });
+  }
+}
+
+document.getElementById('ticketFotos').addEventListener('change', function(e){
+  imagenesTemp = Array.from(e.target.files);
+  document.getElementById('uploadStatus').textContent = imagenesTemp.length + ' foto(s) seleccionada(s), se subirán al guardar.';
+});
+
+function subirImagenesPendientes(ticketId){
+  if(!imagenesTemp.length) return Promise.resolve();
+  var tExistente = ticketsCache[ticketId];
+  if(tExistente && currentUser.rol !== 'admin'){
+    var yaSubio = (tExistente.imagenes || []).some(function(img){ return img.subidaPorRol === currentUser.rol; });
+    if(yaSubio){
+      imagenesTemp = [];
+      document.getElementById('uploadStatus').textContent = 'Ya adjuntaste tu evidencia fotográfica antes; no se pueden agregar más fotos.';
+      return Promise.resolve();
+    }
+  }
+  document.getElementById('uploadStatus').textContent = 'Subiendo imágenes...';
+  var promesas = imagenesTemp.map(function(file){
+    var path = 'tickets/' + ticketId + '/' + Date.now() + '_' + file.name;
+    var ref = storage.ref(path);
+    return ref.put(file).then(function(){
+      return ref.getDownloadURL();
+    }).then(function(url){
+      return {url: url, path: path, nombre: file.name, subidaPor: currentUser.correo, subidaPorRol: currentUser.rol};
+    });
+  });
+  return Promise.all(promesas).then(function(nuevasImagenes){
+    return db.collection('tickets').doc(ticketId).update({
+      imagenes: firebase.firestore.FieldValue.arrayUnion.apply(null, nuevasImagenes)
+    });
+  }).then(function(){
+    imagenesTemp = [];
+    document.getElementById('uploadStatus').textContent = 'Imágenes subidas correctamente.';
+  }).catch(function(err){
+    document.getElementById('uploadStatus').textContent = 'Error subiendo imágenes: ' + err.message;
+  });
+}
+
+function borrarImagen(ticketId, path){
+  if(currentUser.rol !== 'admin'){
+    alert('Las fotos son evidencia y no se pueden borrar. Solo el Admin puede hacerlo en un caso excepcional.');
+    return;
+  }
+  if(!confirm('¿Borrar esta imagen?')) return;
+  var t = ticketsCache[ticketId];
+  var img = (t.imagenes || []).find(function(i){ return i.path === path; });
+  storage.ref(path).delete().catch(function(){}).then(function(){
+    return db.collection('tickets').doc(ticketId).update({
+      imagenes: firebase.firestore.FieldValue.arrayRemove(img)
+    });
+  }).then(function(){
+    abrirTicket(ticketId);
+  });
+}
+
+function borrarImagenesTicket(){
+  if(currentUser.rol !== 'admin'){
+    alert('Las fotos son evidencia y no se pueden borrar. Solo el Admin puede hacerlo en un caso excepcional.');
+    return;
+  }
+  var id = document.getElementById('ticketId').value;
+  if(!id) return;
+  var t = ticketsCache[id];
+  if(!t.imagenes || !t.imagenes.length){
+    alert('Este ticket no tiene imágenes.');
+    return;
+  }
+  if(!confirm('¿Seguro que ya descargaste el respaldo (Excel/Word)? Esto borrará todas las fotos del ticket ' + id + ' de forma permanente.')) return;
+
+  var borrados = t.imagenes.map(function(img){
+    return storage.ref(img.path).delete().catch(function(){});
+  });
+  Promise.all(borrados).then(function(){
+    return db.collection('tickets').doc(id).update({imagenes: []});
+  }).then(function(){
+    alert('Imágenes eliminadas. Los datos del ticket se conservan.');
+    abrirTicket(id);
+  });
+}
+
+function eliminarTicket(){
+  var id = document.getElementById('ticketId').value;
+  if(!id) return;
+  if(!confirm('¿Eliminar completamente el ticket ' + id + '? Esta acción no se puede deshacer.')) return;
+  var t = ticketsCache[id];
+  var borrados = (t.imagenes || []).map(function(img){ return storage.ref(img.path).delete().catch(function(){}); });
+  Promise.all(borrados).then(function(){
+    return db.collection('tickets').doc(id).delete();
+  }).then(function(){
+    cerrarModal('ticketOverlay');
+  });
+}
+
+/* ============================================================
+   EXPORTAR EXCEL
+   ============================================================ */
+function exportarExcel(){
+  var id = document.getElementById('ticketId').value;
+  var t = ticketsCache[id];
+  if(!t) return;
+  var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+  var data = [{
+    "Ticket": id,
+    "Cliente": t.cliente,
+    "Equipo": t.equipo,
+    "Descripción": t.descripcion,
+    "Técnico": t.tecnico,
+    "Tiempo estimado (días)": t.tiempoEstimado,
+    "Etapa": etapaNombre,
+    "Días garantía": t.garantiaDias,
+    "Creado por": t.creadoPor,
+    "Fecha creación": t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : ''
+  }];
+  var ws = XLSX.utils.json_to_sheet(data);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Ticket");
+  XLSX.writeFile(wb, 'Ticket_' + id + '.xlsx');
+}
+
+/* ============================================================
+   EXPORTAR WORD (con imágenes incrustadas)
+   ============================================================ */
+function exportarWord(){
+  var id = document.getElementById('ticketId').value;
+  var t = ticketsCache[id];
+  if(!t) return;
+  var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+  var fecha = t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '';
+
+  var imagenesHtml = (t.imagenes || []).map(function(img){
+    return '<img src="' + img.url + '" style="width:250px;margin:6px;" />';
+  }).join('');
+
+  var html = '\
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+  <head><meta charset="utf-8"><title>Ticket ' + id + '</title></head>\
+  <body style="font-family:Calibri,Arial,sans-serif;">\
+    <h1 style="color:#1e3a5f;">Ticket ' + id + '</h1>\
+    <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+      <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+      <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+      <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+      <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+      <tr><td><b>Tiempo estimado de reparación</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
+      <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
+      <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+      <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
+      <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
+    </table>\
+    <h3 style="color:#1e3a5f;margin-top:20px;">Fotos del ticket</h3>\
+    <div>' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>\
+  </body></html>';
+
+  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'Ticket_' + id + '.doc';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/* ============================================================
+   USUARIOS (solo admin)
+   ============================================================ */
+function abrirUsuarios(){
+  if(currentUser.rol !== 'admin') return;
+  cargarUsuarios();
+  document.getElementById('userOverlay').style.display = 'flex';
+}
+
+function cargarUsuarios(){
+  db.collection('usuarios').get().then(function(snap){
+    var list = document.getElementById('userList');
+    list.innerHTML = '';
+    document.getElementById('userCount').textContent = snap.size;
+    snap.forEach(function(doc){
+      var u = doc.data();
+      var row = document.createElement('div');
+      row.className = 'userRow';
+      var etiquetaSuprema = u.superAdmin ? ' <b style="color:var(--naranja);">⭐ Admin principal</b>' : '';
+      var btnEliminar = u.superAdmin ? '' : ' <button onclick="eliminarUsuario(\'' + doc.id + '\',\'' + escapeHtml(u.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>';
+      row.innerHTML =
+        '<span>' + escapeHtml(u.nombre) + ' <span class="rol rol-' + u.rol + '">' + u.rol + '</span> — ' + escapeHtml(u.correo) + (u.activo === false ? ' <b style="color:#c0392b;">(inactivo)</b>' : '') + etiquetaSuprema + '</span>' +
+        '<span>' +
+        '<button onclick="toggleActivoUsuario(\'' + doc.id + '\',' + (u.activo === false) + ')">' + (u.activo === false ? 'Activar' : 'Desactivar') + '</button>' +
+        ' <button onclick="restablecerPassword(\'' + escapeHtml(u.correo).replace(/'/g,"\\'") + '\')">Cambiar clave</button>' +
+        btnEliminar +
+        '</span>';
+      list.appendChild(row);
+    });
+  });
+}
+
+function toggleActivoUsuario(uid, nuevoEstado){
+  db.collection('usuarios').doc(uid).update({activo: nuevoEstado}).then(cargarUsuarios);
+}
+
+function restablecerPassword(correo){
+  if(!confirm('¿Enviar correo de restablecimiento de contraseña a ' + correo + '?')) return;
+  auth.sendPasswordResetEmail(correo).then(function(){
+    alert('Listo. Se envió un correo a ' + correo + ' con un link para crear una nueva contraseña. Revisa también la carpeta de spam.');
+  }).catch(function(err){
+    alert('Error enviando el correo: ' + err.message);
+  });
+}
+
+function eliminarUsuario(uid, nombre){
+  if(uid === currentUser.uid){
+    alert('No puedes eliminar tu propio usuario mientras tienes la sesión abierta.');
+    return;
+  }
+  db.collection('usuarios').doc(uid).get().then(function(doc){
+    if(doc.exists && doc.data().superAdmin){
+      alert('No se puede eliminar al Admin principal del sistema.');
+      return;
+    }
+    if(!confirm('¿Eliminar a ' + nombre + '? Perderá acceso a la app de inmediato.')) return;
+    db.collection('usuarios').doc(uid).delete().then(function(){
+      cargarUsuarios();
+      alert('Usuario eliminado de la app.\n\nNota: la cuenta de acceso todavía aparece en Firebase Authentication (borrarla del todo requiere hacerlo desde un servidor, algo que esta app no maneja). Si quieres limpiarla completamente, ve a Authentication → Users en la consola de Firebase, busca "' + nombre + '" y elimínala manualmente ahí.');
+    });
+  });
+}
+
+function crearUsuario(){
+  var nombre = document.getElementById('nuevoUserNombre').value.trim();
+  var correo = document.getElementById('nuevoUserCorreo').value.trim();
+  var pass = document.getElementById('nuevoUserPass').value;
+  var rol = document.getElementById('nuevoUserRol').value;
+
+  if(!nombre || !correo || pass.length < 6){
+    alert('Completa nombre, correo, y una contraseña de mínimo 6 caracteres.');
+    return;
+  }
+
+  db.collection('usuarios').get().then(function(snap){
+    if(snap.size >= 10){
+      alert('Ya existen 10 usuarios, el máximo permitido. Desactiva o elimina uno antes de crear otro.');
+      return;
+    }
+    secondaryAuth.createUserWithEmailAndPassword(correo, pass).then(function(cred){
+      return db.collection('usuarios').doc(cred.user.uid).set({
+        nombre: nombre, correo: correo, rol: rol, activo: true,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){
+        return secondaryAuth.signOut();
+      });
+    }).then(function(){
+      document.getElementById('nuevoUserNombre').value = '';
+      document.getElementById('nuevoUserCorreo').value = '';
+      document.getElementById('nuevoUserPass').value = '';
+      cargarUsuarios();
+      alert('Usuario creado correctamente.');
+    }).catch(function(err){
+      alert('Error creando usuario: ' + err.message);
+    });
+  });
+}
+
+/* ============================================================
+   MANTENIMIENTO - Borrado masivo de imágenes por mes (solo admin)
+   ============================================================ */
+var ticketsDelMesActual = [];
+
+function abrirMantenimiento(){
+  if(currentUser.rol !== 'admin') return;
+  document.getElementById('maintMes').value = '';
+  document.getElementById('maintResumen').innerHTML = '';
+  document.getElementById('maintExportRow').style.display = 'none';
+  document.getElementById('maintBorrarRow').style.display = 'none';
+  ticketsDelMesActual = [];
+  document.getElementById('maintOverlay').style.display = 'flex';
+}
+
+function buscarTicketsMes(){
+  var valor = document.getElementById('maintMes').value; // formato "YYYY-MM"
+  if(!valor){
+    alert('Selecciona un mes.');
+    return;
+  }
+  var partes = valor.split('-');
+  var anio = parseInt(partes[0]), mes = parseInt(partes[1]) - 1;
+  var inicio = new Date(anio, mes, 1);
+  var fin = new Date(anio, mes + 1, 1);
+
+  document.getElementById('maintResumen').innerHTML = 'Buscando...';
+
+  db.collection('tickets')
+    .where('fechaCreacion', '>=', inicio)
+    .where('fechaCreacion', '<', fin)
+    .get()
+    .then(function(snap){
+      ticketsDelMesActual = [];
+      snap.forEach(function(doc){
+        var t = doc.data();
+        t.id = doc.id;
+        ticketsDelMesActual.push(t);
+      });
+
+      var totalImagenes = 0;
+      ticketsDelMesActual.forEach(function(t){ totalImagenes += (t.imagenes || []).length; });
+
+      if(ticketsDelMesActual.length === 0){
+        document.getElementById('maintResumen').innerHTML = 'No se encontraron tickets en ese mes.';
+        document.getElementById('maintExportRow').style.display = 'none';
+        document.getElementById('maintBorrarRow').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('maintResumen').innerHTML =
+        '<b>' + ticketsDelMesActual.length + '</b> ticket(s) encontrados, con un total de <b>' + totalImagenes + '</b> foto(s). ' +
+        'Exporta primero el respaldo antes de borrar las imágenes.';
+      document.getElementById('maintExportRow').style.display = 'flex';
+      document.getElementById('maintBorrarRow').style.display = totalImagenes > 0 ? 'flex' : 'none';
+    })
+    .catch(function(err){
+      document.getElementById('maintResumen').innerHTML = 'Error buscando tickets: ' + err.message;
+    });
+}
+
+function exportarExcelMes(){
+  if(!ticketsDelMesActual.length) return;
+  var data = ticketsDelMesActual.map(function(t){
+    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+    return {
+      "Ticket": t.id,
+      "Cliente": t.cliente,
+      "Equipo": t.equipo,
+      "Descripción": t.descripcion,
+      "Técnico": t.tecnico,
+      "Tiempo estimado (días)": t.tiempoEstimado,
+      "Etapa": etapaNombre,
+      "Días garantía": t.garantiaDias,
+      "N° fotos": (t.imagenes || []).length,
+      "Creado por": t.creadoPor,
+      "Fecha creación": t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(data);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Tickets");
+  var mesTxt = document.getElementById('maintMes').value;
+  XLSX.writeFile(wb, 'Tickets_' + mesTxt + '.xlsx');
+}
+
+function exportarWordMes(){
+  if(!ticketsDelMesActual.length) return;
+  var mesTxt = document.getElementById('maintMes').value;
+
+  var secciones = ticketsDelMesActual.map(function(t){
+    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+    var fecha = t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '';
+    var imagenesHtml = (t.imagenes || []).map(function(img){
+      return '<img src="' + img.url + '" style="width:220px;margin:6px;" />';
+    }).join('');
+
+    return '\
+      <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
+      <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+        <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+        <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+        <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+        <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+        <tr><td><b>Tiempo estimado</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
+        <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
+        <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+        <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
+        <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
+      </table>\
+      <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
+  }).join('<div style="page-break-after:always;"></div>');
+
+  var html = '\
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+  <head><meta charset="utf-8"><title>Tickets ' + mesTxt + '</title></head>\
+  <body style="font-family:Calibri,Arial,sans-serif;">\
+    <h1 style="color:#1e3a5f;">Respaldo de tickets — ' + mesTxt + '</h1>\
+    <p>Total de tickets: ' + ticketsDelMesActual.length + '</p>\
+    ' + secciones + '\
+  </body></html>';
+
+  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'Tickets_' + mesTxt + '.doc';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function borrarImagenesMes(){
+  if(!ticketsDelMesActual.length) return;
+  var totalImagenes = 0;
+  ticketsDelMesActual.forEach(function(t){ totalImagenes += (t.imagenes || []).length; });
+  if(totalImagenes === 0){
+    alert('No hay imágenes para borrar en estos tickets.');
+    return;
+  }
+  if(!confirm('¿YA descargaste el respaldo en Excel y Word?\n\nEsto borrará ' + totalImagenes + ' foto(s) de ' + ticketsDelMesActual.length + ' ticket(s) de forma PERMANENTE. Los datos del ticket se conservan, solo se borran las fotos.')) return;
+
+  document.getElementById('maintResumen').innerHTML += '<br>Borrando imágenes, espera un momento...';
+
+  var tareas = ticketsDelMesActual.map(function(t){
+    var borrados = (t.imagenes || []).map(function(img){
+      return storage.ref(img.path).delete().catch(function(){});
+    });
+    return Promise.all(borrados).then(function(){
+      if((t.imagenes || []).length > 0){
+        return db.collection('tickets').doc(t.id).update({imagenes: []});
+      }
+    });
+  });
+
+  Promise.all(tareas).then(function(){
+    alert('Listo: se borraron las imágenes de ' + ticketsDelMesActual.length + ' ticket(s). Los datos quedan intactos.');
+    buscarTicketsMes();
+  }).catch(function(err){
+    alert('Ocurrió un error borrando algunas imágenes: ' + err.message);
+  });
+}
+
+/* ============================================================
+   MÓDULO DE COTIZACIONES (Proyecmec crea → Director autoriza → se convierte en ticket de taller)
+   ============================================================ */
+function generarNuevoCotizacionId(){
+  var contadorRef = db.collection('contadores').doc('cotizaciones');
+  return db.runTransaction(function(transaction){
+    return transaction.get(contadorRef).then(function(doc){
+      var siguiente = doc.exists ? (doc.data().siguiente || 1) : 1;
+      transaction.set(contadorRef, {siguiente: siguiente + 1}, {merge: true});
+      return siguiente;
+    });
+  }).then(function(numero){
+    return 'COT-' + String(numero).padStart(4, '0');
+  });
+}
+
+function abrirCotizaciones(){
+  if(['proyecmec','director','compras','admin'].indexOf(currentUser.rol) === -1) return;
+  document.getElementById('cotFabRow').style.display = (currentUser.rol === 'proyecmec' || currentUser.rol === 'admin') ? 'flex' : 'none';
+  pintarCotizaciones();
+  document.getElementById('cotOverlay').style.display = 'flex';
+}
+
+function escucharCotizaciones(){
+  cotizacionesUnsub = db.collection('cotizaciones').orderBy('fechaCreacion','desc').onSnapshot(function(snap){
+    cotizacionesCache = {};
+    snap.forEach(function(doc){
+      cotizacionesCache[doc.id] = doc.data();
+      cotizacionesCache[doc.id].id = doc.id;
+    });
+    pintarCotizaciones();
+  }, function(err){ console.error(err); });
+}
+
+function pintarCotizaciones(){
+  var board = document.getElementById('cotBoard');
+  if(!board) return;
+  board.innerHTML = '';
+  ETAPAS_COT.forEach(function(etapa){
+    var col = document.createElement('div');
+    col.className = 'col ' + etapa.col;
+    col.style.minWidth = '210px';
+    col.innerHTML = '<h2>' + etapa.nombre + '</h2><div class="col-body" id="cotcol_' + etapa.id + '"></div>';
+    board.appendChild(col);
+  });
+
+  var ids = Object.keys(cotizacionesCache);
+  var vacias = {};
+  ETAPAS_COT.forEach(function(e){ vacias[e.id] = true; });
+
+  ids.forEach(function(id){
+    var c = cotizacionesCache[id];
+    var estado = c.estado || 'creada';
+    var body = document.getElementById('cotcol_' + estado);
+    if(!body) return;
+    vacias[estado] = false;
+
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = function(){ abrirCotizacionDetalle(id); };
+    card.innerHTML =
+      '<div class="tId">' + id + '</div>' +
+      '<div class="tCliente">' + escapeHtml(c.cliente || '') + ' · ' + escapeHtml(c.equipo || '') + '</div>' +
+      '<div style="color:#777;margin-top:4px;font-size:11px;">' + escapeHtml(c.creadoPor || '') + '</div>' +
+      (c.estado === 'aprobada' ? (c.revisadoCompras
+        ? '<div class="tGarantia g-ok" style="margin-top:6px;">✔️ Impresa por Compras</div>'
+        : '<div class="tGarantia g-porvencer" style="margin-top:6px;">⏳ Falta visto de Compras</div>') : '');
+    body.appendChild(card);
+  });
+
+  ETAPAS_COT.forEach(function(e){
+    if(vacias[e.id]){
+      document.getElementById('cotcol_' + e.id).innerHTML = '<div class="emptyCol">Sin cotizaciones</div>';
+    }
+  });
+}
+
+function abrirNuevaCotizacion(){
+  if(currentUser.rol !== 'proyecmec' && currentUser.rol !== 'admin'){
+    alert('Solo Proyecmec o Admin pueden crear una cotización.');
+    return;
+  }
+  document.getElementById('cotDetalleTitle').textContent = 'Nueva cotización';
+  document.getElementById('cotId').value = '';
+  document.getElementById('cotCliente').value = 'Polyagro';
+  document.getElementById('cotEquipo').value = '';
+  document.getElementById('cotDescripcion').value = '';
+  document.getElementById('cotCliente').disabled = false;
+  document.getElementById('cotEquipo').disabled = false;
+  document.getElementById('cotDescripcion').disabled = false;
+  document.getElementById('cotArchivoBox').style.display = 'none';
+  document.getElementById('cotFirmaBox').style.display = 'none';
+  document.getElementById('cotResultadoBox').style.display = 'none';
+  document.getElementById('btnEliminarCot').style.display = 'none';
+  document.getElementById('cotComprasBox').style.display = 'none';
+  document.getElementById('btnGuardarCot').style.display = 'inline-block';
+  document.getElementById('btnGuardarCot').textContent = 'Crear cotización';
+  document.getElementById('cotDetalleOverlay').style.display = 'flex';
+}
+
+function eliminarCotizacion(){
+  var id = document.getElementById('cotId').value;
+  var c = cotizacionesCache[id];
+  if(!id || !c) return;
+  if(currentUser.rol !== 'admin' || c.estado !== 'creada'){
+    alert('Solo se pueden eliminar cotizaciones en estado "Por cotizar", y solo el Admin puede hacerlo.');
+    return;
+  }
+  if(!confirm('¿Eliminar la cotización ' + id + '? Esta acción no se puede deshacer.')) return;
+  db.collection('cotizaciones').doc(id).delete().then(function(){
+    cerrarModal('cotDetalleOverlay');
+  }).catch(function(err){
+    alert('Error eliminando la cotización: ' + err.message);
+  });
+}
+
+function abrirCotizacionDetalle(id){
+  var c = cotizacionesCache[id];
+  if(!c) return;
+  document.getElementById('cotDetalleOverlay').style.display = 'flex';
+  var esProyecmecOAdmin = (currentUser.rol === 'proyecmec' || currentUser.rol === 'admin');
+  var esDirectorOAdmin = (currentUser.rol === 'director' || currentUser.rol === 'admin');
+
+  document.getElementById('cotDetalleTitle').textContent = 'Cotización ' + id;
+  document.getElementById('cotId').value = id;
+  document.getElementById('cotCliente').value = c.cliente || '';
+  document.getElementById('cotEquipo').value = c.equipo || '';
+  document.getElementById('cotDescripcion').value = c.descripcion || '';
+  var soloLecturaDatos = !esProyecmecOAdmin || c.estado !== 'creada';
+  document.getElementById('cotCliente').disabled = soloLecturaDatos;
+  document.getElementById('cotEquipo').disabled = soloLecturaDatos;
+  document.getElementById('cotDescripcion').disabled = soloLecturaDatos;
+  document.getElementById('btnEliminarCot').style.display = (currentUser.rol === 'admin' && c.estado === 'creada') ? 'inline-block' : 'none';
+  document.getElementById('btnGuardarCot').style.display = (esProyecmecOAdmin && c.estado === 'creada') ? 'inline-block' : 'none';
+  document.getElementById('btnGuardarCot').textContent = 'Guardar datos';
+
+  // Archivo de cotización
+  var archivoBox = document.getElementById('cotArchivoBox');
+  var archivoEstado = document.getElementById('cotArchivoEstado');
+  var subirBox = document.getElementById('cotArchivoSubirBox');
+  if(c.estado === 'creada' || c.estado === 'pendiente' || c.estado === 'aprobada' || c.estado === 'rechazada'){
+    archivoBox.style.display = 'block';
+    if(c.archivoUrl){
+      archivoEstado.innerHTML = 'Archivo adjunto: <a href="' + c.archivoUrl + '" target="_blank">' + escapeHtml(c.archivoNombre || 'ver archivo') + '</a>';
+    } else {
+      archivoEstado.textContent = 'Sin archivo adjunto todavía.';
+    }
+    subirBox.style.display = (esProyecmecOAdmin && (c.estado === 'creada' || c.estado === 'pendiente')) ? 'block' : 'none';
+  }
+
+  // Firma / aprobación (solo visible a Director/Admin cuando está pendiente)
+  var firmaBox = document.getElementById('cotFirmaBox');
+  if(esDirectorOAdmin && c.estado === 'pendiente'){
+    firmaBox.style.display = 'block';
+    inicializarFirmaPad();
+  } else {
+    firmaBox.style.display = 'none';
+  }
+
+  // Resultado (aprobada / rechazada)
+  var resultBox = document.getElementById('cotResultadoBox');
+  if(c.estado === 'aprobada'){
+    var fechaAp = c.fechaAprobacion && c.fechaAprobacion.toDate ? c.fechaAprobacion.toDate().toLocaleString('es-CO') : '';
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = 'Aprobada por ' + escapeHtml(c.aprobadaPor || '') + ' el ' + fechaAp + '.' +
+      (c.ticketTallerId ? ' Se creó el ticket de taller <b>' + c.ticketTallerId + '</b>.' : '') +
+      (c.firmaDataUrl ? '<br><img src="' + c.firmaDataUrl + '" style="max-width:200px;margin-top:6px;">' : '');
+  } else if(c.estado === 'rechazada'){
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = 'Rechazada por ' + escapeHtml(c.rechazadaPor || '') + '. Motivo: ' + escapeHtml(c.motivoRechazo || 'sin especificar');
+  } else {
+    resultBox.style.display = 'none';
+  }
+
+  // Visto bueno de Compras: solo visible si ya está aprobada por el Director
+  var comprasBox = document.getElementById('cotComprasBox');
+  var esComprasOAdmin = (currentUser.rol === 'compras' || currentUser.rol === 'admin' || currentUser.rol === 'director');
+  if(c.estado === 'aprobada' && esComprasOAdmin){
+    comprasBox.style.display = 'block';
+    var estadoCompras = document.getElementById('cotComprasEstado');
+    var btnVisto = document.getElementById('btnVistoBuenoCompras');
+    if(c.revisadoCompras){
+      var fechaCompras = c.fechaRevisionCompras && c.fechaRevisionCompras.toDate ? c.fechaRevisionCompras.toDate().toLocaleString('es-CO') : '';
+      estadoCompras.innerHTML = '✔️ Revisada e impresa por ' + escapeHtml(c.revisadoCompraPor || '') + ' el ' + fechaCompras;
+      btnVisto.style.display = 'none';
+    } else {
+      estadoCompras.textContent = 'Compras aún no ha dado el visto bueno de esta cotización.';
+      btnVisto.style.display = (currentUser.rol === 'compras') ? 'inline-block' : 'none';
+    }
+  } else {
+    comprasBox.style.display = 'none';
+  }
+}
+
+function darVistoBuenoCompras(){
+  var id = document.getElementById('cotId').value;
+  var c = cotizacionesCache[id];
+  if(!id || !c) return;
+  if(currentUser.rol !== 'compras'){
+    alert('Solo el perfil de Compras puede dar este visto bueno.');
+    return;
+  }
+  if(c.revisadoCompras){
+    alert('Esta cotización ya fue marcada como revisada.');
+    return;
+  }
+  db.collection('cotizaciones').doc(id).update({
+    revisadoCompras: true,
+    revisadoCompraPor: currentUser.correo,
+    fechaRevisionCompras: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    alert('Marcada como revisada e impresa.');
+    abrirCotizacionDetalle(id);
+  }).catch(function(err){
+    alert('Error: ' + err.message);
+  });
+}
+
+function guardarCotizacionNueva(){
+  var id = document.getElementById('cotId').value;
+  var cliente = document.getElementById('cotCliente').value.trim();
+  var equipo = document.getElementById('cotEquipo').value.trim();
+  var descripcion = document.getElementById('cotDescripcion').value.trim();
+
+  if(!cliente || !equipo){
+    alert('Completa al menos Cliente y Equipo.');
+    return;
+  }
+
+  if(!id){
+    generarNuevoCotizacionId().then(function(nuevoId){
+      var datosNuevo = {
+        cliente: cliente, equipo: equipo, descripcion: descripcion,
+        estado: 'creada',
+        creadoPor: currentUser.correo,
+        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      return db.collection('cotizaciones').doc(nuevoId).set(datosNuevo).then(function(){
+        cotizacionesCache[nuevoId] = Object.assign({id: nuevoId}, datosNuevo, {fechaCreacion: new Date()});
+        return nuevoId;
+      });
+    }).then(function(nuevoId){
+      alert('Cotización ' + nuevoId + ' creada. Ahora adjunta el archivo de la cotización.');
+      abrirCotizacionDetalle(nuevoId);
+    });
+  } else {
+    db.collection('cotizaciones').doc(id).update({
+      cliente: cliente, equipo: equipo, descripcion: descripcion
+    }).then(function(){
+      cerrarModal('cotDetalleOverlay');
+    });
+  }
+}
+
+function subirArchivoCotizacion(){
+  var id = document.getElementById('cotId').value;
+  var input = document.getElementById('cotArchivoInput');
+  var msg = document.getElementById('cotArchivoSubiendoMsg');
+  if(!id || !input.files.length){
+    return;
+  }
+  var file = input.files[0];
+  msg.textContent = 'Subiendo ' + file.name + '...';
+  var path = 'cotizaciones/' + id + '/' + Date.now() + '_' + file.name;
+  var ref = storage.ref(path);
+  ref.put(file).then(function(){
+    return ref.getDownloadURL();
+  }).then(function(url){
+    return db.collection('cotizaciones').doc(id).update({
+      archivoUrl: url,
+      archivoPath: path,
+      archivoNombre: file.name,
+      estado: 'pendiente',
+      fechaEnvio: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }).then(function(){
+    msg.textContent = '';
+    alert('Cotización enviada. Queda pendiente de autorización del Director General.');
+    abrirCotizacionDetalle(id);
+  }).catch(function(err){
+    msg.textContent = '';
+    alert('Error subiendo el archivo: ' + err.message);
+  });
+}
+
+function aprobarCotizacionYConvertir(){
+  var id = document.getElementById('cotId').value;
+  var c = cotizacionesCache[id];
+  if(!id || !c) return;
+  if(esCanvasFirmaVacio()){
+    alert('Dibuja tu firma antes de aprobar.');
+    return;
+  }
+  if(!confirm('¿Confirmas la autorización? Esto creará automáticamente el ticket de mantenimiento de taller.')) return;
+
+  var firmaDataUrl = document.getElementById('firmaPad').toDataURL('image/png');
+
+  generarNuevoTicketId().then(function(nuevoTicketId){
+    return db.collection('tickets').doc(nuevoTicketId).set({
+      cliente: c.cliente, equipo: c.equipo, descripcion: c.descripcion,
+      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: 30,
+      fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+      fechaEntrega: null, creadoPor: c.creadoPor, imagenes: [],
+      origenCotizacionId: id,
+      historial: [{etapa: 'recibido', fecha: new Date(), usuario: currentUser.correo + ' (desde cotización aprobada)'}]
+    }).then(function(){
+      return db.collection('cotizaciones').doc(id).update({
+        estado: 'aprobada',
+        aprobadaPor: currentUser.correo,
+        fechaAprobacion: firebase.firestore.FieldValue.serverTimestamp(),
+        firmaDataUrl: firmaDataUrl,
+        ticketTallerId: nuevoTicketId
+      });
+    }).then(function(){
+      return nuevoTicketId;
+    });
+  }).then(function(nuevoTicketId){
+    alert('Cotización autorizada. Se creó el ticket de taller ' + nuevoTicketId + '.');
+    abrirCotizacionDetalle(id);
+  }).catch(function(err){
+    alert('Error al aprobar: ' + err.message);
+  });
+}
+
+function rechazarCotizacion(){
+  var id = document.getElementById('cotId').value;
+  if(!id) return;
+  var motivo = prompt('¿Motivo del rechazo?');
+  if(motivo === null) return;
+  db.collection('cotizaciones').doc(id).update({
+    estado: 'rechazada',
+    rechazadaPor: currentUser.correo,
+    motivoRechazo: motivo,
+    fechaRechazo: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    alert('Cotización rechazada.');
+    abrirCotizacionDetalle(id);
+  });
+}
+
+/* ============================================================
+   HISTORIAL DE GARANTÍAS VENCIDAS (solo admin)
+   ============================================================ */
+var historialGarantiaCache = [];
+
+function abrirHistorialGarantia(){
+  if(currentUser.rol !== 'admin') return;
+  document.getElementById('garantiaResumen').textContent = 'Cargando...';
+  db.collection('historialGarantia').orderBy('archivadoEn','desc').get().then(function(snap){
+    historialGarantiaCache = [];
+    snap.forEach(function(doc){
+      var d = doc.data();
+      d.id = doc.id;
+      historialGarantiaCache.push(d);
+    });
+    document.getElementById('garantiaResumen').innerHTML =
+      historialGarantiaCache.length
+        ? '<b>' + historialGarantiaCache.length + '</b> ticket(s) archivados por garantía vencida.'
+        : 'Todavía no hay tickets archivados por garantía vencida.';
+  });
+  document.getElementById('garantiaOverlay').style.display = 'flex';
+}
+
+function exportarExcelGarantia(){
+  if(!historialGarantiaCache.length){ alert('No hay datos para exportar.'); return; }
+  var data = historialGarantiaCache.map(function(t){
+    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+    return {
+      "Ticket": t.id,
+      "Cliente": t.cliente,
+      "Equipo": t.equipo,
+      "Descripción": t.descripcion,
+      "Técnico": t.tecnico,
+      "Etapa final": etapaNombre,
+      "Días garantía": t.garantiaDias,
+      "N° fotos": (t.imagenes || []).length,
+      "Creado por": t.creadoPor,
+      "Fecha creación": t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '',
+      "Fecha entrega": t.fechaEntrega && t.fechaEntrega.toDate ? t.fechaEntrega.toDate().toLocaleString('es-CO') : '',
+      "Archivado el": t.archivadoEn && t.archivadoEn.toDate ? t.archivadoEn.toDate().toLocaleString('es-CO') : ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(data);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Garantias_Vencidas");
+  XLSX.writeFile(wb, 'Historial_Garantias_Vencidas.xlsx');
+}
+
+function exportarWordGarantia(){
+  if(!historialGarantiaCache.length){ alert('No hay datos para exportar.'); return; }
+  var secciones = historialGarantiaCache.map(function(t){
+    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+    var fechaEntrega = t.fechaEntrega && t.fechaEntrega.toDate ? t.fechaEntrega.toDate().toLocaleString('es-CO') : '';
+    var imagenesHtml = (t.imagenes || []).map(function(img){
+      return '<img src="' + img.url + '" style="width:220px;margin:6px;" />';
+    }).join('');
+    return '\
+      <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
+      <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+        <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+        <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+        <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+        <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+        <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+        <tr><td><b>Fecha de entrega</b></td><td>' + fechaEntrega + '</td></tr>\
+      </table>\
+      <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
+  }).join('<div style="page-break-after:always;"></div>');
+
+  var html = '\
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+  <head><meta charset="utf-8"><title>Historial garantías vencidas</title></head>\
+  <body style="font-family:Calibri,Arial,sans-serif;">\
+    <h1 style="color:#1e3a5f;">Historial de garantías vencidas</h1>\
+    <p>Total de tickets archivados: ' + historialGarantiaCache.length + '</p>\
+    ' + secciones + '\
+  </body></html>';
+
+  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'Historial_Garantias_Vencidas.doc';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/* ============================================================
+   REPORTE MENSUAL PARA PROYECMEC (solo admin)
+   ============================================================ */
+var reporteCache = [];
+var reporteResumenCache = null;
+
+function abrirReporteProyecmec(){
+  if(currentUser.rol !== 'admin') return;
+  var hoy = new Date();
+  var mesActual = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2,'0');
+  document.getElementById('reporteMes').value = mesActual;
+  document.getElementById('reporteExportRow').style.display = 'none';
+  reporteCache = [];
+  reporteResumenCache = null;
+  document.getElementById('reporteOverlay').style.display = 'flex';
+  generarReporteProyecmec();
+}
+
+function generarReporteProyecmec(){
+  var valor = document.getElementById('reporteMes').value;
+  if(!valor){ alert('Selecciona un mes.'); return; }
+  var partes = valor.split('-');
+  var anio = parseInt(partes[0]), mes = parseInt(partes[1]) - 1;
+  var inicio = new Date(anio, mes, 1);
+  var fin = new Date(anio, mes + 1, 1);
+
+  document.getElementById('reporteResumen').innerHTML = 'Buscando...';
+
+  var consultaActivos = db.collection('tickets')
+    .where('fechaEntrega', '>=', inicio).where('fechaEntrega', '<', fin).get();
+  var consultaArchivados = db.collection('historialGarantia')
+    .where('fechaEntrega', '>=', inicio).where('fechaEntrega', '<', fin).get();
+
+  Promise.all([consultaActivos, consultaArchivados]).then(function(resultados){
+    var todos = [];
+    resultados.forEach(function(snap){
+      snap.forEach(function(doc){
+        var d = doc.data();
+        d.id = doc.id;
+        todos.push(d);
+      });
+    });
+    // Solo los que tienen calificación registrada por Polyagro
+    reporteCache = todos.filter(function(t){ return t.calificacion && t.calificacion.promedio !== undefined; });
+
+    var fallasGarantia = todos.filter(function(t){ return t.calificacion && t.calificacion.fallaEnGarantia; });
+
+    if(reporteCache.length === 0){
+      document.getElementById('reporteResumen').innerHTML = 'No hay tickets calificados en ese mes (' + todos.length + ' ticket(s) entregados en total, ninguno calificado todavía).';
+      document.getElementById('reporteExportRow').style.display = 'none';
+      reporteResumenCache = null;
+      return;
+    }
+
+    var sumas = {cotizacion:0, personal:0, plazos:0, soporte:0, promedio:0};
+    reporteCache.forEach(function(t){
+      sumas.cotizacion += t.calificacion.cotizacion || 0;
+      sumas.personal += t.calificacion.personal || 0;
+      sumas.plazos += t.calificacion.plazos || 0;
+      sumas.soporte += t.calificacion.soporte || 0;
+      sumas.promedio += t.calificacion.promedio || 0;
+    });
+    var n = reporteCache.length;
+    var prom = {
+      cotizacion: sumas.cotizacion / n, personal: sumas.personal / n,
+      plazos: sumas.plazos / n, soporte: sumas.soporte / n, general: sumas.promedio / n
+    };
+    var tipo = prom.general >= 70 ? 'Proveedor Tipo I (cumple con los requisitos)' :
+               prom.general >= 60 ? 'Proveedor Tipo II (requiere plan de acción)' :
+               'Proveedor Tipo III (requiere revisión con Gerencia General)';
+
+    reporteResumenCache = {mes: valor, n: n, prom: prom, tipo: tipo, fallasGarantia: fallasGarantia};
+
+    document.getElementById('reporteResumen').innerHTML =
+      '<b>' + n + '</b> ticket(s) calificados en ' + valor + '.<br>' +
+      'Cotización: <b>' + prom.cotizacion.toFixed(1) + '</b> · Personal/Calidad: <b>' + prom.personal.toFixed(1) + '</b> · ' +
+      'Plazos: <b>' + prom.plazos.toFixed(1) + '</b> · Soporte técnico: <b>' + prom.soporte.toFixed(1) + '</b><br>' +
+      'Promedio general: <b>' + prom.general.toFixed(1) + ' / 100</b> — ' + tipo + '<br>' +
+      'Fallas reportadas en garantía este mes: <b>' + fallasGarantia.length + '</b>';
+    document.getElementById('reporteExportRow').style.display = 'flex';
+  }).catch(function(err){
+    document.getElementById('reporteResumen').innerHTML = 'Error generando el reporte: ' + err.message;
+  });
+}
+
+function exportarExcelReporte(){
+  if(!reporteResumenCache) return;
+  var detalle = reporteCache.map(function(t){
+    return {
+      "Ticket": t.id, "Cliente": t.cliente, "Equipo": t.equipo,
+      "Cotización": t.calificacion.cotizacion, "Personal/Calidad": t.calificacion.personal,
+      "Plazos": t.calificacion.plazos, "Soporte técnico": t.calificacion.soporte,
+      "Promedio": t.calificacion.promedio.toFixed(1),
+      "Falla en garantía": t.calificacion.fallaEnGarantia ? 'Sí' : 'No',
+      "Comentario": t.calificacion.comentario || ''
+    };
+  });
+  var resumen = [{
+    "Mes": reporteResumenCache.mes, "Tickets evaluados": reporteResumenCache.n,
+    "Cotización (prom)": reporteResumenCache.prom.cotizacion.toFixed(1),
+    "Personal/Calidad (prom)": reporteResumenCache.prom.personal.toFixed(1),
+    "Plazos (prom)": reporteResumenCache.prom.plazos.toFixed(1),
+    "Soporte técnico (prom)": reporteResumenCache.prom.soporte.toFixed(1),
+    "Promedio general": reporteResumenCache.prom.general.toFixed(1),
+    "Clasificación": reporteResumenCache.tipo,
+    "Fallas en garantía": reporteResumenCache.fallasGarantia.length
+  }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), "Resumen");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), "Detalle_Tickets");
+  XLSX.writeFile(wb, 'Reporte_Proyecmec_' + reporteResumenCache.mes + '.xlsx');
+}
+
+function exportarWordReporte(){
+  if(!reporteResumenCache) return;
+  var r = reporteResumenCache;
+  var filasDetalle = reporteCache.map(function(t){
+    return '<tr>' +
+      '<td>' + t.id + '</td><td>' + escapeHtml(t.equipo || '') + '</td>' +
+      '<td>' + t.calificacion.cotizacion + '</td><td>' + t.calificacion.personal + '</td>' +
+      '<td>' + t.calificacion.plazos + '</td><td>' + t.calificacion.soporte + '</td>' +
+      '<td>' + t.calificacion.promedio.toFixed(1) + '</td>' +
+      '<td>' + (t.calificacion.fallaEnGarantia ? 'Sí' : 'No') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var html = '\
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+  <head><meta charset="utf-8"><title>Reporte Proyecmec ' + r.mes + '</title></head>\
+  <body style="font-family:Calibri,Arial,sans-serif;">\
+    <h1 style="color:#1e3a5f;">Evaluación mensual de servicio — Proyecmec</h1>\
+    <p><b>Periodo:</b> ' + r.mes + ' &nbsp; | &nbsp; <b>Evaluado por:</b> Polyagro</p>\
+    <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+      <tr><td><b>Tickets evaluados</b></td><td>' + r.n + '</td></tr>\
+      <tr><td><b>Solicitud de cotización y ejecución</b></td><td>' + r.prom.cotizacion.toFixed(1) + ' / 100</td></tr>\
+      <tr><td><b>Personal calificado y calidad del arreglo</b></td><td>' + r.prom.personal.toFixed(1) + ' / 100</td></tr>\
+      <tr><td><b>Cumplimiento de plazos de entrega</b></td><td>' + r.prom.plazos.toFixed(1) + ' / 100</td></tr>\
+      <tr><td><b>Soporte técnico</b></td><td>' + r.prom.soporte.toFixed(1) + ' / 100</td></tr>\
+      <tr><td><b>Promedio general</b></td><td><b>' + r.prom.general.toFixed(1) + ' / 100</b></td></tr>\
+      <tr><td><b>Clasificación</b></td><td>' + escapeHtml(r.tipo) + '</td></tr>\
+      <tr><td><b>Fallas reportadas en garantía</b></td><td>' + r.fallasGarantia.length + '</td></tr>\
+    </table>\
+    <h3 style="color:#1e3a5f;margin-top:20px;">Detalle por ticket</h3>\
+    <table style="border-collapse:collapse;width:100%;font-size:12px;" border="1" cellpadding="5">\
+      <tr style="background:#eee;"><th>Ticket</th><th>Equipo</th><th>Cotiz.</th><th>Personal</th><th>Plazos</th><th>Soporte</th><th>Promedio</th><th>Falla garantía</th></tr>\
+      ' + filasDetalle + '\
+    </table>\
+  </body></html>';
+
+  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'Reporte_Proyecmec_' + r.mes + '.doc';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+</script>
+</body>
+</html>
