@@ -156,11 +156,64 @@
   .firmaBtns{margin-top:6px;display:flex;gap:8px;}
   .userRow button{border:none;background:none;color:var(--rojo);cursor:pointer;font-size:12px;}
 
+  .menuToggle{display:none;}
+
   @media(max-width:600px){
-    .col{min-width:220px;max-width:220px;}
-    header{flex-direction:column;align-items:flex-start;}
+    body{font-size:15px;}
+    header{
+      flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      padding:12px 14px;gap:6px;position:sticky;top:0;z-index:40;
+    }
+    header h1{font-size:16px;}
+    header .userInfo{font-size:12px;width:100%;order:3;opacity:.85;}
+    .menuToggle{
+      display:inline-block;background:rgba(255,255,255,.18);color:#fff;border:none;
+      padding:7px 12px;border-radius:6px;font-size:13px;
+    }
+    header .btns{
+      display:none;flex-direction:column;width:100%;order:4;margin-top:10px;gap:6px;
+    }
+    header .btns.abierto{display:flex;}
+    header .btns button{margin-left:0;width:100%;padding:11px;font-size:14px;text-align:left;}
+
+    #avisoPendientes{font-size:12px;padding:10px 14px;}
+
+    #board{padding:10px;gap:10px;}
+    .col{min-width:78vw;max-width:78vw;scroll-snap-align:start;}
+    #board{scroll-snap-type:x mandatory;}
+    .col h2{font-size:14px;padding:14px;}
+    .card{padding:12px;font-size:14px;}
+    .card .tId{font-size:15px;}
+
+    #fabAdd{width:60px;height:60px;font-size:30px;bottom:18px;right:18px;}
+
+    .modal{
+      max-width:100%;width:100%;border-radius:0;margin:0;min-height:100vh;
+      padding:18px 16px 90px;
+    }
+    .overlay{padding:0;}
+    .modal input, .modal select, .modal textarea{font-size:16px;padding:11px;}
+    .modalActions{position:sticky;bottom:0;background:#fff;margin:18px -16px -90px;padding:14px 16px;border-top:1px solid var(--gris-borde);}
+    .imgGrid .imgItem{width:31vw;max-width:110px;}
+    .imgGrid .imgItem img{width:100%;height:31vw;max-height:110px;}
+
+    .userRow{flex-direction:column;align-items:flex-start;gap:6px;}
+    .userRow span:last-child{display:flex;flex-wrap:wrap;gap:6px;}
+    .userRow button{padding:6px 10px;border:1px solid var(--gris-borde);border-radius:5px;}
   }
 </style>
+<script>
+function toggleMenu(){
+  document.getElementById('btnsContainer').classList.toggle('abierto');
+}
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('btnsContainer').addEventListener('click', function(e){
+    if(e.target.tagName === 'BUTTON'){
+      document.getElementById('btnsContainer').classList.remove('abierto');
+    }
+  });
+});
+</script>
 </head>
 <body>
 
@@ -181,7 +234,8 @@
   <header>
     <h1>Proyecmec · Taller</h1>
     <div class="userInfo" id="userInfo"></div>
-    <div class="btns">
+    <button class="menuToggle" id="menuToggle" onclick="toggleMenu()">☰ Menú</button>
+    <div class="btns" id="btnsContainer">
       <button class="secondary" id="btnCotizaciones" onclick="abrirCotizaciones()" style="display:none;">Cotizaciones</button>
       <button class="secondary" id="btnUsuarios" onclick="abrirUsuarios()" style="display:none;">Usuarios</button>
       <button class="secondary" id="btnMantenimiento" onclick="abrirMantenimiento()" style="display:none;">Mantenimiento</button>
@@ -315,7 +369,7 @@
     </select>
 
     <div class="modalActions">
-      <button class="btnPrimary" onclick="crearUsuario()">Crear usuario</button>
+      <button class="btnPrimary" id="btnCrearUsuario" onclick="crearUsuario()">Crear usuario</button>
     </div>
   </div>
 </div>
@@ -791,6 +845,8 @@ function ajustarPermisosTicket(esNuevo){
 
   // Botón guardar: solo visible cuando la persona puede realmente guardar cambios
   document.getElementById('btnGuardarTicket').style.display = (soloLectura) ? 'none' : 'inline-block';
+  document.getElementById('btnGuardarTicket').disabled = false;
+  document.getElementById('btnGuardarTicket').textContent = 'Guardar';
 
   // Nota informativa para quien solo puede ver
   var notaExistente = document.getElementById('notaSoloLectura');
@@ -1159,6 +1215,7 @@ function generarNuevoTicketId(){
    GUARDAR / SUBIR IMÁGENES / ELIMINAR
    ============================================================ */
 function guardarTicket(){
+  if(document.getElementById('btnGuardarTicket').disabled) return; // evita doble clic mientras guarda
   var id = document.getElementById('ticketId').value;
   var esNuevo = !id;
 
@@ -1210,6 +1267,15 @@ function guardarTicket(){
     return;
   }
 
+  document.getElementById('btnGuardarTicket').disabled = true;
+  document.getElementById('btnGuardarTicket').textContent = 'Guardando...';
+
+  function reactivarBoton(){
+    var btn = document.getElementById('btnGuardarTicket');
+    btn.disabled = false;
+    btn.textContent = 'Guardar';
+  }
+
   if(esNuevo){
     datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
     datos.fechaEntrega = etapaSeleccionada === 'entregado' ? firebase.firestore.FieldValue.serverTimestamp() : null;
@@ -1223,6 +1289,10 @@ function guardarTicket(){
       });
     }).then(function(){
       cerrarModal('ticketOverlay');
+      reactivarBoton();
+    }).catch(function(err){
+      alert('Error guardando el ticket: ' + err.message);
+      reactivarBoton();
     });
   } else {
     var t = ticketsCache[id];
@@ -1238,9 +1308,13 @@ function guardarTicket(){
       }
     }
     db.collection('tickets').doc(id).update(update).then(function(){
-      subirImagenesPendientes(id).then(function(){
-        cerrarModal('ticketOverlay');
-      });
+      return subirImagenesPendientes(id);
+    }).then(function(){
+      cerrarModal('ticketOverlay');
+      reactivarBoton();
+    }).catch(function(err){
+      alert('Error guardando el ticket: ' + err.message);
+      reactivarBoton();
     });
   }
 }
@@ -1249,6 +1323,42 @@ document.getElementById('ticketFotos').addEventListener('change', function(e){
   imagenesTemp = Array.from(e.target.files);
   document.getElementById('uploadStatus').textContent = imagenesTemp.length + ' foto(s) seleccionada(s), se subirán al guardar.';
 });
+
+/* ============================================================
+   COMPRIMIR FOTO ANTES DE SUBIRLA (ahorra espacio en Storage y en los reportes Word)
+   ============================================================ */
+function comprimirArchivoImagen(file, maxAncho){
+  return new Promise(function(resolve){
+    if(!file.type || file.type.indexOf('image/') !== 0){
+      resolve(file); // no es imagen (ej. PDF de cotización), se sube tal cual
+      return;
+    }
+    var urlLocal = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(w > maxAncho){
+        h = Math.round(h * (maxAncho / w));
+        w = maxAncho;
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob){
+        URL.revokeObjectURL(urlLocal);
+        if(!blob){ resolve(file); return; }
+        var nombreJpg = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+        resolve(new File([blob], nombreJpg, {type: 'image/jpeg'}));
+      }, 'image/jpeg', 0.75);
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(urlLocal);
+      resolve(file); // si algo falla, sube el archivo original en vez de bloquear
+    };
+    img.src = urlLocal;
+  });
+}
 
 function subirImagenesPendientes(ticketId){
   if(!imagenesTemp.length) return Promise.resolve();
@@ -1263,12 +1373,14 @@ function subirImagenesPendientes(ticketId){
   }
   document.getElementById('uploadStatus').textContent = 'Subiendo imágenes...';
   var promesas = imagenesTemp.map(function(file){
-    var path = 'tickets/' + ticketId + '/' + Date.now() + '_' + file.name;
-    var ref = storage.ref(path);
-    return ref.put(file).then(function(){
-      return ref.getDownloadURL();
-    }).then(function(url){
-      return {url: url, path: path, nombre: file.name, subidaPor: currentUser.correo, subidaPorRol: currentUser.rol};
+    return comprimirArchivoImagen(file, 1000).then(function(fileComprimido){
+      var path = 'tickets/' + ticketId + '/' + Date.now() + '_' + fileComprimido.name;
+      var ref = storage.ref(path);
+      return ref.put(fileComprimido).then(function(){
+        return ref.getDownloadURL();
+      }).then(function(url){
+        return {url: url, path: path, nombre: fileComprimido.name, subidaPor: currentUser.correo, subidaPorRol: currentUser.rol};
+      });
     });
   });
   return Promise.all(promesas).then(function(nuevasImagenes){
@@ -1367,44 +1479,75 @@ function exportarExcel(){
 /* ============================================================
    EXPORTAR WORD (con imágenes incrustadas)
    ============================================================ */
+/* ============================================================
+   COMPRESIÓN DE IMÁGENES PARA REPORTES WORD (evita archivos pesados)
+   ============================================================ */
+function comprimirImagenParaWord(url, maxAncho){
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(w > maxAncho){
+        h = Math.round(h * (maxAncho / w));
+        w = maxAncho;
+      }
+      try{
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      } catch(e){
+        resolve(url); // si falla por CORS u otro motivo, usa la URL original como respaldo
+      }
+    };
+    img.onerror = function(){ resolve(url); };
+    img.src = url;
+  });
+}
+
 function exportarWord(){
   var id = document.getElementById('ticketId').value;
   var t = ticketsCache[id];
   if(!t) return;
   var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
   var fecha = t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '';
+  var imagenes = t.imagenes || [];
 
-  var imagenesHtml = (t.imagenes || []).map(function(img){
-    return '<img src="' + img.url + '" style="width:250px;margin:6px;" />';
-  }).join('');
+  Promise.all(imagenes.map(function(img){ return comprimirImagenParaWord(img.url, 500); })).then(function(dataUrls){
+    var imagenesHtml = dataUrls.map(function(durl){
+      return '<img src="' + durl + '" style="width:250px;margin:6px;" />';
+    }).join('');
 
-  var html = '\
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
-  <head><meta charset="utf-8"><title>Ticket ' + id + '</title></head>\
-  <body style="font-family:Calibri,Arial,sans-serif;">\
-    <h1 style="color:#1e3a5f;">Ticket ' + id + '</h1>\
-    <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
-      <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
-      <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
-      <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
-      <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
-      <tr><td><b>Tiempo estimado de reparación</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
-      <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
-      <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
-      <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
-      <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
-    </table>\
-    <h3 style="color:#1e3a5f;margin-top:20px;">Fotos del ticket</h3>\
-    <div>' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>\
-  </body></html>';
+    var html = '\
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+    <head><meta charset="utf-8"><title>Ticket ' + id + '</title></head>\
+    <body style="font-family:Calibri,Arial,sans-serif;">\
+      <h1 style="color:#1e3a5f;">Ticket ' + id + '</h1>\
+      <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+        <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+        <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+        <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+        <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+        <tr><td><b>Tiempo estimado de reparación</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
+        <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
+        <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+        <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
+        <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
+      </table>\
+      <h3 style="color:#1e3a5f;margin-top:20px;">Fotos del ticket</h3>\
+      <div>' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>\
+    </body></html>';
 
-  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
-  var link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'Ticket_' + id + '.doc';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Ticket_' + id + '.doc';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
 }
 
 /* ============================================================
@@ -1471,6 +1614,8 @@ function eliminarUsuario(uid, nombre){
 }
 
 function crearUsuario(){
+  var btnUser = document.getElementById('btnCrearUsuario');
+  if(btnUser.disabled) return;
   var nombre = document.getElementById('nuevoUserNombre').value.trim();
   var correo = document.getElementById('nuevoUserCorreo').value.trim();
   var pass = document.getElementById('nuevoUserPass').value;
@@ -1481,9 +1626,14 @@ function crearUsuario(){
     return;
   }
 
+  btnUser.disabled = true;
+  btnUser.textContent = 'Creando...';
+
   db.collection('usuarios').get().then(function(snap){
     if(snap.size >= 10){
       alert('Ya existen 10 usuarios, el máximo permitido. Desactiva o elimina uno antes de crear otro.');
+      btnUser.disabled = false;
+      btnUser.textContent = 'Crear usuario';
       return;
     }
     secondaryAuth.createUserWithEmailAndPassword(correo, pass).then(function(cred){
@@ -1499,9 +1649,17 @@ function crearUsuario(){
       document.getElementById('nuevoUserPass').value = '';
       cargarUsuarios();
       alert('Usuario creado correctamente.');
+      btnUser.disabled = false;
+      btnUser.textContent = 'Crear usuario';
     }).catch(function(err){
       alert('Error creando usuario: ' + err.message);
+      btnUser.disabled = false;
+      btnUser.textContent = 'Crear usuario';
     });
+  }).catch(function(err){
+    alert('Error: ' + err.message);
+    btnUser.disabled = false;
+    btnUser.textContent = 'Crear usuario';
   });
 }
 
@@ -1595,45 +1753,49 @@ function exportarWordMes(){
   if(!ticketsDelMesActual.length) return;
   var mesTxt = document.getElementById('maintMes').value;
 
-  var secciones = ticketsDelMesActual.map(function(t){
-    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
-    var fecha = t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '';
-    var imagenesHtml = (t.imagenes || []).map(function(img){
-      return '<img src="' + img.url + '" style="width:220px;margin:6px;" />';
-    }).join('');
+  Promise.all(ticketsDelMesActual.map(function(t){
+    return Promise.all((t.imagenes || []).map(function(img){ return comprimirImagenParaWord(img.url, 400); }));
+  })).then(function(listaImagenesComprimidas){
+    var secciones = ticketsDelMesActual.map(function(t, idx){
+      var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+      var fecha = t.fechaCreacion && t.fechaCreacion.toDate ? t.fechaCreacion.toDate().toLocaleString('es-CO') : '';
+      var imagenesHtml = listaImagenesComprimidas[idx].map(function(durl){
+        return '<img src="' + durl + '" style="width:220px;margin:6px;" />';
+      }).join('');
 
-    return '\
-      <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
-      <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
-        <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
-        <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
-        <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
-        <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
-        <tr><td><b>Tiempo estimado</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
-        <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
-        <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
-        <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
-        <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
-      </table>\
-      <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
-  }).join('<div style="page-break-after:always;"></div>');
+      return '\
+        <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
+        <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+          <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+          <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+          <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+          <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+          <tr><td><b>Tiempo estimado</b></td><td>' + (t.tiempoEstimado ? t.tiempoEstimado + ' día(s)' : '') + '</td></tr>\
+          <tr><td><b>Etapa</b></td><td>' + escapeHtml(etapaNombre) + '</td></tr>\
+          <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+          <tr><td><b>Creado por</b></td><td>' + escapeHtml(t.creadoPor || '') + '</td></tr>\
+          <tr><td><b>Fecha de creación</b></td><td>' + fecha + '</td></tr>\
+        </table>\
+        <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
+    }).join('<div style="page-break-after:always;"></div>');
 
-  var html = '\
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
-  <head><meta charset="utf-8"><title>Tickets ' + mesTxt + '</title></head>\
-  <body style="font-family:Calibri,Arial,sans-serif;">\
-    <h1 style="color:#1e3a5f;">Respaldo de tickets — ' + mesTxt + '</h1>\
-    <p>Total de tickets: ' + ticketsDelMesActual.length + '</p>\
-    ' + secciones + '\
-  </body></html>';
+    var html = '\
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+    <head><meta charset="utf-8"><title>Tickets ' + mesTxt + '</title></head>\
+    <body style="font-family:Calibri,Arial,sans-serif;">\
+      <h1 style="color:#1e3a5f;">Respaldo de tickets — ' + mesTxt + '</h1>\
+      <p>Total de tickets: ' + ticketsDelMesActual.length + '</p>\
+      ' + secciones + '\
+    </body></html>';
 
-  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
-  var link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'Tickets_' + mesTxt + '.doc';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Tickets_' + mesTxt + '.doc';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
 }
 
 function borrarImagenesMes(){
@@ -1764,6 +1926,7 @@ function abrirNuevaCotizacion(){
   document.getElementById('cotComprasBox').style.display = 'none';
   document.getElementById('btnGuardarCot').style.display = 'inline-block';
   document.getElementById('btnGuardarCot').textContent = 'Crear cotización';
+  document.getElementById('btnGuardarCot').disabled = false;
   document.getElementById('cotDetalleOverlay').style.display = 'flex';
 }
 
@@ -1802,6 +1965,7 @@ function abrirCotizacionDetalle(id){
   document.getElementById('btnEliminarCot').style.display = (currentUser.rol === 'admin' && c.estado === 'creada') ? 'inline-block' : 'none';
   document.getElementById('btnGuardarCot').style.display = (esProyecmecOAdmin && c.estado === 'creada') ? 'inline-block' : 'none';
   document.getElementById('btnGuardarCot').textContent = 'Guardar datos';
+  document.getElementById('btnGuardarCot').disabled = false;
 
   // Archivo de cotización
   var archivoBox = document.getElementById('cotArchivoBox');
@@ -1886,6 +2050,7 @@ function darVistoBuenoCompras(){
 }
 
 function guardarCotizacionNueva(){
+  if(document.getElementById('btnGuardarCot').disabled) return;
   var id = document.getElementById('cotId').value;
   var cliente = document.getElementById('cotCliente').value.trim();
   var equipo = document.getElementById('cotEquipo').value.trim();
@@ -1895,6 +2060,11 @@ function guardarCotizacionNueva(){
     alert('Completa al menos Cliente y Equipo.');
     return;
   }
+
+  var btnCot = document.getElementById('btnGuardarCot');
+  btnCot.disabled = true;
+  var textoOriginalBtnCot = btnCot.textContent;
+  btnCot.textContent = 'Guardando...';
 
   if(!id){
     generarNuevoCotizacionId().then(function(nuevoId){
@@ -1911,12 +2081,22 @@ function guardarCotizacionNueva(){
     }).then(function(nuevoId){
       alert('Cotización ' + nuevoId + ' creada. Ahora adjunta el archivo de la cotización.');
       abrirCotizacionDetalle(nuevoId);
+    }).catch(function(err){
+      alert('Error: ' + err.message);
+      btnCot.disabled = false;
+      btnCot.textContent = textoOriginalBtnCot;
     });
   } else {
     db.collection('cotizaciones').doc(id).update({
       cliente: cliente, equipo: equipo, descripcion: descripcion
     }).then(function(){
       cerrarModal('cotDetalleOverlay');
+      btnCot.disabled = false;
+      btnCot.textContent = textoOriginalBtnCot;
+    }).catch(function(err){
+      alert('Error: ' + err.message);
+      btnCot.disabled = false;
+      btnCot.textContent = textoOriginalBtnCot;
     });
   }
 }
@@ -2057,41 +2237,46 @@ function exportarExcelGarantia(){
 
 function exportarWordGarantia(){
   if(!historialGarantiaCache.length){ alert('No hay datos para exportar.'); return; }
-  var secciones = historialGarantiaCache.map(function(t){
-    var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
-    var fechaEntrega = t.fechaEntrega && t.fechaEntrega.toDate ? t.fechaEntrega.toDate().toLocaleString('es-CO') : '';
-    var imagenesHtml = (t.imagenes || []).map(function(img){
-      return '<img src="' + img.url + '" style="width:220px;margin:6px;" />';
-    }).join('');
-    return '\
-      <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
-      <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
-        <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
-        <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
-        <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
-        <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
-        <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
-        <tr><td><b>Fecha de entrega</b></td><td>' + fechaEntrega + '</td></tr>\
-      </table>\
-      <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
-  }).join('<div style="page-break-after:always;"></div>');
 
-  var html = '\
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
-  <head><meta charset="utf-8"><title>Historial garantías vencidas</title></head>\
-  <body style="font-family:Calibri,Arial,sans-serif;">\
-    <h1 style="color:#1e3a5f;">Historial de garantías vencidas</h1>\
-    <p>Total de tickets archivados: ' + historialGarantiaCache.length + '</p>\
-    ' + secciones + '\
-  </body></html>';
+  Promise.all(historialGarantiaCache.map(function(t){
+    return Promise.all((t.imagenes || []).map(function(img){ return comprimirImagenParaWord(img.url, 400); }));
+  })).then(function(listaImagenesComprimidas){
+    var secciones = historialGarantiaCache.map(function(t, idx){
+      var etapaNombre = (ETAPAS.find(function(e){return e.id === t.etapa;}) || {}).nombre || t.etapa;
+      var fechaEntrega = t.fechaEntrega && t.fechaEntrega.toDate ? t.fechaEntrega.toDate().toLocaleString('es-CO') : '';
+      var imagenesHtml = listaImagenesComprimidas[idx].map(function(durl){
+        return '<img src="' + durl + '" style="width:220px;margin:6px;" />';
+      }).join('');
+      return '\
+        <h2 style="color:#1e3a5f;border-bottom:1px solid #ccc;padding-bottom:4px;">Ticket ' + t.id + '</h2>\
+        <table style="border-collapse:collapse;width:100%;" border="1" cellpadding="6">\
+          <tr><td><b>Cliente</b></td><td>' + escapeHtml(t.cliente || '') + '</td></tr>\
+          <tr><td><b>Equipo</b></td><td>' + escapeHtml(t.equipo || '') + '</td></tr>\
+          <tr><td><b>Descripción</b></td><td>' + escapeHtml(t.descripcion || '') + '</td></tr>\
+          <tr><td><b>Técnico</b></td><td>' + escapeHtml(t.tecnico || '') + '</td></tr>\
+          <tr><td><b>Días de garantía</b></td><td>' + (t.garantiaDias || 0) + '</td></tr>\
+          <tr><td><b>Fecha de entrega</b></td><td>' + fechaEntrega + '</td></tr>\
+        </table>\
+        <div style="margin:10px 0 20px;">' + (imagenesHtml || '<i>Sin imágenes</i>') + '</div>';
+    }).join('<div style="page-break-after:always;"></div>');
 
-  var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
-  var link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'Historial_Garantias_Vencidas.doc';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    var html = '\
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\
+    <head><meta charset="utf-8"><title>Historial garantías vencidas</title></head>\
+    <body style="font-family:Calibri,Arial,sans-serif;">\
+      <h1 style="color:#1e3a5f;">Historial de garantías vencidas</h1>\
+      <p>Total de tickets archivados: ' + historialGarantiaCache.length + '</p>\
+      ' + secciones + '\
+    </body></html>';
+
+    var blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Historial_Garantias_Vencidas.doc';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
 }
 
 /* ============================================================
