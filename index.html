@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <label>Descripción del problema</label>
     <textarea id="ticketDescripcion" placeholder="Detalle del daño o servicio solicitado"></textarea>
+    <div id="datosBasicosNota" style="display:none;font-size:11px;color:var(--rojo);margin-top:2px;">🔒 Cliente, equipo, descripción y prioridad los definió Polyagro; no se pueden modificar (solo el Admin puede corregirlos).</div>
 
     <label>Técnico asignado</label>
     <input type="text" id="ticketTecnico" placeholder="Nombre del técnico">
@@ -279,8 +280,11 @@ document.addEventListener('DOMContentLoaded', function(){
     <input type="number" id="ticketTiempoEstimado" min="1" step="1" placeholder="Ej: 3">
     <div id="tiempoEstimadoNota" style="display:none;font-size:11px;color:var(--rojo);margin-top:2px;">🔒 Ya quedó fijado, no se puede cambiar (solo el Admin puede corregirlo).</div>
 
-    <label>Días de garantía</label>
-    <input type="number" id="ticketGarantia" value="30" min="0">
+    <div id="garantiaBloque" style="display:none;">
+      <label>Días de garantía</label>
+      <input type="number" id="ticketGarantia" min="0" placeholder="Ej: 30">
+      <div id="garantiaBloqueadaNota" style="display:none;font-size:11px;color:var(--rojo);margin-top:2px;">🔒 La garantía ya quedó fijada al pasar a "Listo para entrega", no se puede cambiar (solo el Admin puede corregirla).</div>
+    </div>
 
     <label>Etapa actual</label>
     <div class="stageRow" id="stageRow"></div>
@@ -828,11 +832,14 @@ function ajustarPermisosTicket(esNuevo){
   // Ya creado el ticket, solo Proyecmec/Admin agregan más fotos (avance de la reparación).
   document.getElementById('ticketFotos').disabled = (soloPolyagro && !esNuevo) || esDirector;
 
-  // Cliente/equipo/descripción: Polyagro los edita solo al CREAR; Director nunca los edita
-  var camposBasicos = ['ticketCliente','ticketEquipo','ticketDescripcion'];
+  // Cliente/equipo/descripción/prioridad: los define Polyagro al crear. Una vez creado el ticket,
+  // quedan fijos para TODOS (incluido Proyecmec), solo el Admin los puede corregir.
+  var camposBasicosSoloLectura = !esNuevo && currentUser.rol !== 'admin';
+  var camposBasicos = ['ticketCliente','ticketEquipo','ticketDescripcion','ticketPrioridad'];
   camposBasicos.forEach(function(idCampo){
-    document.getElementById(idCampo).disabled = soloLectura;
+    document.getElementById(idCampo).disabled = camposBasicosSoloLectura;
   });
+  document.getElementById('datosBasicosNota').style.display = camposBasicosSoloLectura ? 'block' : 'none';
 
   // Etapas: Polyagro y Director no eligen etapa
   document.getElementById('stageRow').style.display = (soloPolyagro || esDirector) ? 'none' : 'flex';
@@ -860,7 +867,7 @@ function ajustarPermisosTicket(esNuevo){
   }
 }
 
-function pintarStageRow(etapaActual, esNuevo, esAdmin){
+function pintarStageRow(etapaActual, esNuevo, esAdmin, ticket){
   var row = document.getElementById('stageRow');
   row.innerHTML = '';
 
@@ -908,6 +915,15 @@ function pintarStageRow(etapaActual, esNuevo, esAdmin){
       btn.textContent = '✓ Se guardará como: ' + siguiente.nombre;
       btn.disabled = true;
       btn.style.opacity = '0.7';
+      if(siguiente.id === 'entregado' && ticket && ticket.origenCotizacionId && currentUser.rol !== 'admin'){
+        document.getElementById('ticketFotos').disabled = false;
+        document.getElementById('fotosBloqueadasNota').style.display = 'none';
+      }
+      if(siguiente.id === 'listo_entrega'){
+        document.getElementById('garantiaBloque').style.display = 'block';
+        document.getElementById('ticketGarantia').disabled = false;
+        document.getElementById('garantiaBloqueadaNota').style.display = 'none';
+      }
     };
     row.appendChild(btn);
   } else {
@@ -949,14 +965,17 @@ function abrirNuevoTicket(){
   document.getElementById('ticketTiempoEstimado').value = '';
   document.getElementById('tiempoEstimadoNota').style.display = 'none';
   document.getElementById('fotosBloqueadasNota').style.display = 'none';
-  document.getElementById('ticketGarantia').value = 30;
+  document.getElementById('datosBasicosNota').style.display = 'none';
+  document.getElementById('garantiaBloqueadaNota').style.display = 'none';
+  document.getElementById('garantiaBloque').style.display = 'none';
+  document.getElementById('ticketGarantia').value = '';
   document.getElementById('imgGrid').innerHTML = '';
   document.getElementById('uploadStatus').textContent = '';
   document.getElementById('historialBox').style.display = 'none';
   document.getElementById('exportRow').style.display = 'none';
   document.getElementById('btnEliminarTicket').style.display = 'none';
   imagenesTemp = [];
-  pintarStageRow('recibido', true, currentUser.rol === 'admin');
+  pintarStageRow('recibido', true, currentUser.rol === 'admin', null);
   ajustarPermisosTicket(true);
   document.getElementById('origenCotBox').style.display = 'none';
   document.getElementById('calificacionSection').style.display = 'none';
@@ -975,8 +994,8 @@ function abrirTicket(id){
   document.getElementById('ticketDescripcion').value = t.descripcion || '';
   document.getElementById('ticketTecnico').value = t.tecnico || '';
   document.getElementById('ticketTiempoEstimado').value = t.tiempoEstimado || '';
-  document.getElementById('ticketGarantia').value = t.garantiaDias || 30;
-  pintarStageRow(t.etapa || 'recibido', false, currentUser.rol === 'admin');
+  document.getElementById('ticketGarantia').value = t.garantiaDias || 0;
+  pintarStageRow(t.etapa || 'recibido', false, currentUser.rol === 'admin', t);
 
   var grid = document.getElementById('imgGrid');
   grid.innerHTML = '';
@@ -1018,12 +1037,36 @@ function abrirTicket(id){
     notaTiempo.style.display = 'none';
   }
 
+  // Garantía: el campo ni siquiera aparece hasta que el ticket llega a "Listo para entrega"
+  var bloqueGarantia = document.getElementById('garantiaBloque');
+  var notaGarantia = document.getElementById('garantiaBloqueadaNota');
+  var etapasConGarantiaVisible = ['listo_entrega','entregado'];
+  if(etapasConGarantiaVisible.indexOf(t.etapa) !== -1){
+    bloqueGarantia.style.display = 'block';
+    if(currentUser.rol !== 'admin'){
+      document.getElementById('ticketGarantia').disabled = true;
+      notaGarantia.style.display = 'block';
+    } else {
+      document.getElementById('ticketGarantia').disabled = false;
+      notaGarantia.style.display = 'none';
+    }
+  } else {
+    bloqueGarantia.style.display = 'none';
+  }
+
   // Fotos: una vez el rol actual ya subió alguna, se bloquea el campo (evidencia fija, no se agregan más)
   var yaSubioFotoEsteRol = (t.imagenes || []).some(function(img){ return img.subidaPorRol === currentUser.rol; });
   var notaFotos = document.getElementById('fotosBloqueadasNota');
   if(yaSubioFotoEsteRol && currentUser.rol !== 'admin'){
     document.getElementById('ticketFotos').disabled = true;
+    notaFotos.textContent = '🔒 Ya adjuntaste tu evidencia fotográfica, no se pueden agregar ni borrar más fotos.';
     notaFotos.style.display = 'block';
+  } else if(t.origenCotizacionId && t.etapa !== 'entregado' && currentUser.rol !== 'admin'){
+    // Tickets nacidos de una cotización no tienen foto inicial de Polyagro:
+    // solo se habilita subir foto justo cuando el ticket va a pasar a "Entregado".
+    document.getElementById('ticketFotos').disabled = true;
+    notaFotos.style.display = 'block';
+    notaFotos.textContent = '🔒 Este ticket viene de una cotización aprobada. La foto de evidencia solo se puede adjuntar cuando el ticket esté por entregarse.';
   } else {
     notaFotos.style.display = 'none';
   }
@@ -1175,7 +1218,7 @@ function reportarFallaGarantia(){
     return db.collection('tickets').doc(nuevoTicketId).set({
       cliente: t.cliente, equipo: t.equipo,
       descripcion: 'FALLA EN GARANTÍA (ref. ' + id + '): ' + descripcionFalla,
-      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: t.garantiaDias || 30,
+      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: 0,
       fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
       fechaEntrega: null, creadoPor: currentUser.correo, imagenes: [],
       origenGarantiaId: id,
@@ -1248,6 +1291,12 @@ function guardarTicket(){
 
   if(!esNuevo && etapaSeleccionada !== 'recibido' && !document.getElementById('ticketTiempoEstimado').value.trim()){
     alert('Antes de avanzar el ticket debes indicar el tiempo estimado de entrega. Ese dato es lo que Polyagro usará para calificar el cumplimiento de plazos.');
+    return;
+  }
+
+  var etapasQueRequierenGarantia = ['listo_entrega','entregado'];
+  if(!esNuevo && etapasQueRequierenGarantia.indexOf(etapaSeleccionada) !== -1 && !(parseInt(document.getElementById('ticketGarantia').value) > 0)){
+    alert('Antes de avanzar a "Listo para entrega" debes indicar los días de garantía (mayor a 0). Ese dato queda fijo desde ese momento.');
     return;
   }
 
@@ -2147,7 +2196,7 @@ function aprobarCotizacionYConvertir(){
   generarNuevoTicketId().then(function(nuevoTicketId){
     return db.collection('tickets').doc(nuevoTicketId).set({
       cliente: c.cliente, equipo: c.equipo, descripcion: c.descripcion,
-      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: 30,
+      etapa: 'recibido', tecnico: '', tiempoEstimado: null, garantiaDias: 0,
       fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
       fechaEntrega: null, creadoPor: c.creadoPor, imagenes: [],
       origenCotizacionId: id,
