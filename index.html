@@ -241,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <button class="secondary" id="btnMantenimiento" onclick="abrirMantenimiento()" style="display:none;">Mantenimiento</button>
       <button class="secondary" id="btnGarantias" onclick="abrirHistorialGarantia()" style="display:none;">Garantías vencidas</button>
       <button class="secondary" id="btnReporte" onclick="abrirReporteProyecmec()" style="display:none;">Reporte Proyecmec</button>
+      <button class="secondary" id="btnDepuracion" onclick="abrirDepuracion()" style="display:none;">⚠️ Depuración total</button>
       <button class="secondary" onclick="cerrarSesion()">Salir</button>
     </div>
   </header>
@@ -441,6 +442,37 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 
+<!-- ===================== DEPURACIÓN TOTAL (solo super admin) ===================== -->
+<div class="overlay" id="depuracionOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('depuracionOverlay')">×</button>
+    <h2>⚠️ Depuración total del sistema</h2>
+    <p style="font-size:12px;color:#666;">Solo tú (Admin principal) puedes ver esta opción. Úsala solo para dejar el sistema en ceros antes de una prueba o un arranque real.</p>
+
+    <div class="cotizacionBox">
+      <h3 style="margin-top:0;color:#1e3a5f;font-size:15px;">Tickets de taller</h3>
+      <div id="depuracionEstadoTickets" style="font-size:13px;">Cargando...</div>
+      <button class="btnDanger" style="margin-top:10px;" onclick="borrarTodosLosTickets()">🗑️ Borrar TODOS los tickets</button>
+      <div style="margin-top:14px;">
+        <label>Número desde el cual debe arrancar el próximo ticket</label>
+        <input type="number" id="depuracionProximoTicket" min="1" placeholder="Ej: 1">
+        <button class="btnSecondary" style="margin-top:6px;" onclick="fijarContadorTickets()">Fijar número inicial</button>
+      </div>
+    </div>
+
+    <div class="cotizacionBox" style="margin-top:14px;">
+      <h3 style="margin-top:0;color:#1e3a5f;font-size:15px;">Cotizaciones</h3>
+      <div id="depuracionEstadoCot" style="font-size:13px;">Cargando...</div>
+      <button class="btnDanger" style="margin-top:10px;" onclick="borrarTodasLasCotizaciones()">🗑️ Borrar TODAS las cotizaciones</button>
+      <div style="margin-top:14px;">
+        <label>Número desde el cual debe arrancar la próxima cotización</label>
+        <input type="number" id="depuracionProximaCot" min="1" placeholder="Ej: 1">
+        <button class="btnSecondary" style="margin-top:6px;" onclick="fijarContadorCotizaciones()">Fijar número inicial</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== REPORTE MENSUAL PARA PROYECMEC ===================== -->
 <div class="overlay" id="reporteOverlay">
   <div class="modal">
@@ -607,6 +639,7 @@ function mostrarApp(){
   document.getElementById('btnMantenimiento').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
   document.getElementById('btnGarantias').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
   document.getElementById('btnReporte').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnDepuracion').style.display = currentUser.superAdmin === true ? 'inline-block' : 'none';
   document.getElementById('fabAdd').style.display = (currentUser.rol === 'polyagro' || currentUser.rol === 'admin') ? 'block' : 'none';
   renderBoard();
   escucharTickets();
@@ -2484,6 +2517,113 @@ function exportarWordReporte(){
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+/* ============================================================
+   DEPURACIÓN TOTAL (solo super admin)
+   ============================================================ */
+function abrirDepuracion(){
+  if(currentUser.superAdmin !== true){
+    alert('Solo el Admin principal puede acceder a esta opción.');
+    return;
+  }
+  document.getElementById('depuracionProximoTicket').value = '';
+  document.getElementById('depuracionProximaCot').value = '';
+  cargarEstadoDepuracion();
+  document.getElementById('depuracionOverlay').style.display = 'flex';
+}
+
+function cargarEstadoDepuracion(){
+  db.collection('tickets').get().then(function(snap){
+    document.getElementById('depuracionEstadoTickets').innerHTML = 'Actualmente hay <b>' + snap.size + '</b> ticket(s) en el tablero.';
+  });
+  db.collection('contadores').doc('tickets').get().then(function(doc){
+    var siguiente = doc.exists ? (doc.data().siguiente || 1) : 1;
+    document.getElementById('depuracionEstadoTickets').innerHTML += ' El próximo ticket, si no cambias nada, sería <b>TK-' + String(siguiente).padStart(4,'0') + '</b>.';
+  });
+
+  db.collection('cotizaciones').get().then(function(snap){
+    document.getElementById('depuracionEstadoCot').innerHTML = 'Actualmente hay <b>' + snap.size + '</b> cotización(es).';
+  });
+  db.collection('contadores').doc('cotizaciones').get().then(function(doc){
+    var siguiente = doc.exists ? (doc.data().siguiente || 1) : 1;
+    document.getElementById('depuracionEstadoCot').innerHTML += ' La próxima cotización, si no cambias nada, sería <b>COT-' + String(siguiente).padStart(4,'0') + '</b>.';
+  });
+}
+
+function borrarColeccionCompleta(nombreColeccion){
+  return db.collection(nombreColeccion).get().then(function(snap){
+    var docs = snap.docs;
+    var lotes = [];
+    for(var i = 0; i < docs.length; i += 450){
+      lotes.push(docs.slice(i, i + 450));
+    }
+    var promesaSecuencial = Promise.resolve();
+    lotes.forEach(function(lote){
+      promesaSecuencial = promesaSecuencial.then(function(){
+        var batch = db.batch();
+        lote.forEach(function(doc){ batch.delete(doc.ref); });
+        return batch.commit();
+      });
+    });
+    return promesaSecuencial.then(function(){ return docs.length; });
+  });
+}
+
+function borrarTodosLosTickets(){
+  if(currentUser.superAdmin !== true) return;
+  if(!confirm('¿Seguro que quieres borrar TODOS los tickets del tablero? Esto no se puede deshacer. Las fotos en Storage no se borran automáticamente (puedes limpiarlas luego desde "Mantenimiento" si hace falta).')) return;
+  if(prompt('Escribe BORRAR (en mayúsculas) para confirmar:') !== 'BORRAR'){
+    alert('Cancelado, el texto no coincidió.');
+    return;
+  }
+  borrarColeccionCompleta('tickets').then(function(cantidad){
+    alert('Se borraron ' + cantidad + ' ticket(s). El tablero quedó en ceros.');
+    cargarEstadoDepuracion();
+  }).catch(function(err){
+    alert('Error borrando tickets: ' + err.message);
+  });
+}
+
+function borrarTodasLasCotizaciones(){
+  if(currentUser.superAdmin !== true) return;
+  if(!confirm('¿Seguro que quieres borrar TODAS las cotizaciones? Esto no se puede deshacer.')) return;
+  if(prompt('Escribe BORRAR (en mayúsculas) para confirmar:') !== 'BORRAR'){
+    alert('Cancelado, el texto no coincidió.');
+    return;
+  }
+  borrarColeccionCompleta('cotizaciones').then(function(cantidad){
+    alert('Se borraron ' + cantidad + ' cotización(es).');
+    cargarEstadoDepuracion();
+  }).catch(function(err){
+    alert('Error borrando cotizaciones: ' + err.message);
+  });
+}
+
+function fijarContadorTickets(){
+  if(currentUser.superAdmin !== true) return;
+  var numero = parseInt(document.getElementById('depuracionProximoTicket').value);
+  if(!numero || numero < 1){
+    alert('Escribe un número válido, mayor a 0.');
+    return;
+  }
+  db.collection('contadores').doc('tickets').set({siguiente: numero}, {merge: true}).then(function(){
+    alert('Listo. El próximo ticket será TK-' + String(numero).padStart(4,'0') + '.');
+    cargarEstadoDepuracion();
+  });
+}
+
+function fijarContadorCotizaciones(){
+  if(currentUser.superAdmin !== true) return;
+  var numero = parseInt(document.getElementById('depuracionProximaCot').value);
+  if(!numero || numero < 1){
+    alert('Escribe un número válido, mayor a 0.');
+    return;
+  }
+  db.collection('contadores').doc('cotizaciones').set({siguiente: numero}, {merge: true}).then(function(){
+    alert('Listo. La próxima cotización será COT-' + String(numero).padStart(4,'0') + '.');
+    cargarEstadoDepuracion();
+  });
 }
 </script>
 </body>
