@@ -948,7 +948,8 @@ function pintarStageRow(etapaActual, esNuevo, esAdmin, ticket){
       btn.textContent = '✓ Se guardará como: ' + siguiente.nombre;
       btn.disabled = true;
       btn.style.opacity = '0.7';
-      if(siguiente.id === 'entregado' && ticket && ticket.origenCotizacionId && currentUser.rol !== 'admin'){
+      var etapasConFotoHabilitadaProyecmec = ['calidad','listo_entrega','entregado'];
+      if(currentUser.rol === 'proyecmec' && etapasConFotoHabilitadaProyecmec.indexOf(siguiente.id) !== -1){
         document.getElementById('ticketFotos').disabled = false;
         document.getElementById('fotosBloqueadasNota').style.display = 'none';
       }
@@ -1090,16 +1091,17 @@ function abrirTicket(id){
   // Fotos: una vez el rol actual ya subió alguna, se bloquea el campo (evidencia fija, no se agregan más)
   var yaSubioFotoEsteRol = (t.imagenes || []).some(function(img){ return img.subidaPorRol === currentUser.rol; });
   var notaFotos = document.getElementById('fotosBloqueadasNota');
+  var etapasConFotoHabilitadaProyecmec = ['calidad','listo_entrega','entregado'];
   if(yaSubioFotoEsteRol && currentUser.rol !== 'admin'){
     document.getElementById('ticketFotos').disabled = true;
     notaFotos.textContent = '🔒 Ya adjuntaste tu evidencia fotográfica, no se pueden agregar ni borrar más fotos.';
     notaFotos.style.display = 'block';
-  } else if(t.origenCotizacionId && t.etapa !== 'entregado' && currentUser.rol !== 'admin'){
-    // Tickets nacidos de una cotización no tienen foto inicial de Polyagro:
-    // solo se habilita subir foto justo cuando el ticket va a pasar a "Entregado".
+  } else if(currentUser.rol === 'proyecmec' && etapasConFotoHabilitadaProyecmec.indexOf(t.etapa) === -1){
+    // Proyecmec solo puede adjuntar su foto de evidencia desde "Control de calidad" en adelante,
+    // nunca antes (ni bien reciben el ticket, ni durante espera de repuestos o reparación).
     document.getElementById('ticketFotos').disabled = true;
     notaFotos.style.display = 'block';
-    notaFotos.textContent = '🔒 Este ticket viene de una cotización aprobada. La foto de evidencia solo se puede adjuntar cuando el ticket esté por entregarse.';
+    notaFotos.textContent = '🔒 La foto de evidencia del arreglo solo se puede adjuntar desde "Control de calidad" en adelante.';
   } else {
     notaFotos.style.display = 'none';
   }
@@ -1317,9 +1319,13 @@ function guardarTicket(){
 
   var etapaSeleccionada = esSoloPolyagro() ? 'recibido' : getStageSeleccionada();
 
-  if(!esNuevo && etapaSeleccionada === 'entregado' && currentUser.rol !== 'admin' && imagenesTemp.length === 0){
-    alert('Antes de marcar el ticket como "Entregado" debes adjuntar al menos una foto del arreglo terminado. Esto sirve como evidencia de que el trabajo se completó.');
-    return;
+  if(!esNuevo){
+    var tActualParaFoto = ticketsCache[id];
+    var proyecmecYaTieneFoto = tActualParaFoto && (tActualParaFoto.imagenes || []).some(function(img){ return img.subidaPorRol === 'proyecmec'; });
+    if(etapaSeleccionada === 'entregado' && currentUser.rol !== 'admin' && imagenesTemp.length === 0 && !proyecmecYaTieneFoto){
+      alert('Antes de marcar el ticket como "Entregado" debes adjuntar al menos una foto del arreglo terminado. Esto sirve como evidencia de que el trabajo se completó.');
+      return;
+    }
   }
 
   if(!esNuevo && etapaSeleccionada !== 'recibido' && !document.getElementById('ticketTiempoEstimado').value.trim()){
