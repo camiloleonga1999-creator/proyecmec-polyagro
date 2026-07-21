@@ -2067,6 +2067,8 @@ function abrirCotizacionDetalle(id){
       archivoEstado.textContent = 'Sin archivo adjunto todavía.';
     }
     subirBox.style.display = (esProyecmecOAdmin && (c.estado === 'creada' || c.estado === 'pendiente')) ? 'block' : 'none';
+    document.getElementById('cotArchivoInput').disabled = false;
+    document.getElementById('cotArchivoInput').value = '';
   }
 
   // Firma / aprobación (solo visible a Director/Admin cuando está pendiente)
@@ -2196,6 +2198,8 @@ function subirArchivoCotizacion(){
   if(!id || !input.files.length){
     return;
   }
+  if(input.disabled) return; // evita doble envío mientras sube
+  input.disabled = true;
   var file = input.files[0];
   msg.textContent = 'Subiendo ' + file.name + '...';
   var path = 'cotizaciones/' + id + '/' + Date.now() + '_' + file.name;
@@ -2216,6 +2220,7 @@ function subirArchivoCotizacion(){
     abrirCotizacionDetalle(id);
   }).catch(function(err){
     msg.textContent = '';
+    input.disabled = false;
     alert('Error subiendo el archivo: ' + err.message);
   });
 }
