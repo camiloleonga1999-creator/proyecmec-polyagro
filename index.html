@@ -238,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="btns" id="btnsContainer">
       <button class="secondary" id="btnCotizaciones" onclick="abrirCotizaciones()" style="display:none;">Cotizaciones</button>
       <button class="secondary" id="btnUsuarios" onclick="abrirUsuarios()" style="display:none;">Usuarios</button>
+      <button class="secondary" id="btnWhatsapp" onclick="abrirConfigWhatsapp()" style="display:none;">📲 WhatsApp</button>
       <button class="secondary" id="btnMantenimiento" onclick="abrirMantenimiento()" style="display:none;">Mantenimiento</button>
       <button class="secondary" id="btnGarantias" onclick="abrirHistorialGarantia()" style="display:none;">Garantías vencidas</button>
       <button class="secondary" id="btnReporte" onclick="abrirReporteProyecmec()" style="display:none;">Reporte Proyecmec</button>
@@ -388,6 +389,42 @@ document.addEventListener('DOMContentLoaded', function(){
     <div id="cotBoard" style="display:flex;gap:10px;overflow-x:auto;padding:6px 0;"></div>
     <div class="modalActions" id="cotFabRow" style="justify-content:flex-start;">
       <button class="btnPrimary" onclick="abrirNuevaCotizacion()">+ Nueva cotización</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CONFIGURACIÓN DE WHATSAPP (solo admin) ===================== -->
+<div class="overlay" id="whatsappConfigOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('whatsappConfigOverlay')">×</button>
+    <h2>📲 Números de WhatsApp para avisos</h2>
+    <p style="font-size:12px;color:#666;">Escribe el número completo con indicativo de país, sin espacios ni signos. Ej: 573001234567</p>
+
+    <label>Proyecmec (recibe aviso cuando Polyagro crea un ticket)</label>
+    <input type="text" id="whatsappProyecmec" placeholder="Ej: 573001234567">
+
+    <label>Director General (recibe aviso cuando hay una cotización pendiente de aprobar)</label>
+    <input type="text" id="whatsappDirector" placeholder="Ej: 573001234567">
+
+    <label>Compras (recibe aviso cuando una cotización queda aprobada)</label>
+    <input type="text" id="whatsappCompras" placeholder="Ej: 573001234567">
+
+    <div class="modalActions">
+      <button class="btnSecondary" onclick="cerrarModal('whatsappConfigOverlay')">Cerrar</button>
+      <button class="btnPrimary" onclick="guardarConfigWhatsapp()">Guardar números</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== AVISO DE WHATSAPP (aparece tras crear/avanzar) ===================== -->
+<div class="overlay" id="whatsappAvisoOverlay">
+  <div class="modal">
+    <button class="btnClose" onclick="cerrarModal('whatsappAvisoOverlay')">×</button>
+    <h2>📲 Avisar por WhatsApp</h2>
+    <p id="whatsappAvisoTexto" style="font-size:13px;color:#444;white-space:pre-wrap;background:#f5f5f5;padding:10px;border-radius:6px;"></p>
+    <div class="modalActions">
+      <button class="btnSecondary" onclick="cerrarModal('whatsappAvisoOverlay')">Ahora no</button>
+      <a class="btnPrimary" id="btnAbrirWhatsapp" href="#" target="_blank" style="text-decoration:none;display:inline-block;padding:9px 16px;border-radius:5px;" onclick="cerrarModal('whatsappAvisoOverlay')">Abrir WhatsApp</a>
     </div>
   </div>
 </div>
@@ -635,6 +672,7 @@ function mostrarApp(){
   var etiquetasRol = {admin:'Admin', proyecmec:'Proyecmec', polyagro:'Polyagro', director:'Director General', compras:'Compras'};
   document.getElementById('userInfo').textContent = currentUser.nombre + " · " + (etiquetasRol[currentUser.rol] || currentUser.rol);
   document.getElementById('btnUsuarios').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
+  document.getElementById('btnWhatsapp').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
   document.getElementById('btnCotizaciones').style.display = ['proyecmec','director','compras','admin'].indexOf(currentUser.rol) !== -1 ? 'inline-block' : 'none';
   document.getElementById('btnMantenimiento').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
   document.getElementById('btnGarantias').style.display = currentUser.rol === 'admin' ? 'inline-block' : 'none';
@@ -1374,10 +1412,15 @@ function guardarTicket(){
     generarNuevoTicketId().then(function(nuevoId){
       return db.collection('tickets').doc(nuevoId).set(datos).then(function(){
         return subirImagenesPendientes(nuevoId);
+      }).then(function(){
+        return nuevoId;
       });
-    }).then(function(){
+    }).then(function(nuevoId){
       cerrarModal('ticketOverlay');
       reactivarBoton();
+      var msg = 'Nuevo ticket creado: ' + nuevoId + '\nCliente: ' + datos.cliente + '\nEquipo: ' + datos.equipo +
+        '\nPrioridad: ' + (datos.prioridad === 'urgente' ? 'URGENTE' : 'Normal') + '\nDescripción: ' + datos.descripcion;
+      ofrecerAvisoWhatsapp('proyecmec', msg);
     }).catch(function(err){
       alert('Error guardando el ticket: ' + err.message);
       reactivarBoton();
@@ -2218,6 +2261,9 @@ function subirArchivoCotizacion(){
     msg.textContent = '';
     alert('Cotización enviada. Queda pendiente de autorización del Director General.');
     abrirCotizacionDetalle(id);
+    var c = cotizacionesCache[id] || {};
+    var mensajeWa = 'Cotización pendiente de autorizar: ' + id + '\nCliente: ' + (c.cliente || '') + '\nEquipo: ' + (c.equipo || '') + '\nRevísala en el sistema Proyecmec.';
+    ofrecerAvisoWhatsapp('director', mensajeWa);
   }).catch(function(err){
     msg.textContent = '';
     input.disabled = false;
@@ -2259,6 +2305,8 @@ function aprobarCotizacionYConvertir(){
   }).then(function(nuevoTicketId){
     alert('Cotización autorizada. Se creó el ticket de taller ' + nuevoTicketId + '.');
     abrirCotizacionDetalle(id);
+    var mensajeWa = 'Cotización aprobada: ' + id + '\nCliente: ' + (c.cliente || '') + '\nEquipo: ' + (c.equipo || '') + '\nYa se puede imprimir y archivar.';
+    ofrecerAvisoWhatsapp('compras', mensajeWa);
   }).catch(function(err){
     alert('Error al aprobar: ' + err.message);
   });
@@ -2634,6 +2682,47 @@ function fijarContadorCotizaciones(){
   db.collection('contadores').doc('cotizaciones').set({siguiente: numero}, {merge: true}).then(function(){
     alert('Listo. La próxima cotización será COT-' + String(numero).padStart(4,'0') + '.');
     cargarEstadoDepuracion();
+  });
+}
+
+/* ============================================================
+   NOTIFICACIONES POR WHATSAPP (botón manual, según el rol que corresponda)
+   ============================================================ */
+function abrirConfigWhatsapp(){
+  if(currentUser.rol !== 'admin') return;
+  db.collection('config').doc('whatsapp').get().then(function(doc){
+    var datos = doc.exists ? doc.data() : {};
+    document.getElementById('whatsappProyecmec').value = datos.proyecmec || '';
+    document.getElementById('whatsappDirector').value = datos.director || '';
+    document.getElementById('whatsappCompras').value = datos.compras || '';
+  });
+  document.getElementById('whatsappConfigOverlay').style.display = 'flex';
+}
+
+function guardarConfigWhatsapp(){
+  var datos = {
+    proyecmec: document.getElementById('whatsappProyecmec').value.trim().replace(/\D/g,''),
+    director: document.getElementById('whatsappDirector').value.trim().replace(/\D/g,''),
+    compras: document.getElementById('whatsappCompras').value.trim().replace(/\D/g,'')
+  };
+  db.collection('config').doc('whatsapp').set(datos, {merge: true}).then(function(){
+    alert('Números guardados correctamente.');
+    cerrarModal('whatsappConfigOverlay');
+  }).catch(function(err){
+    alert('Error guardando: ' + err.message);
+  });
+}
+
+// Muestra el modal de aviso con el mensaje ya armado. rolDestino: 'proyecmec' | 'director' | 'compras'
+function ofrecerAvisoWhatsapp(rolDestino, mensaje){
+  db.collection('config').doc('whatsapp').get().then(function(doc){
+    var numero = doc.exists ? doc.data()[rolDestino] : '';
+    if(!numero){
+      return; // no hay número configurado para ese rol, no se muestra nada
+    }
+    document.getElementById('whatsappAvisoTexto').textContent = mensaje;
+    document.getElementById('btnAbrirWhatsapp').href = 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje);
+    document.getElementById('whatsappAvisoOverlay').style.display = 'flex';
   });
 }
 </script>
